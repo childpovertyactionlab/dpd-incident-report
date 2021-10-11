@@ -164,48 +164,14 @@ tract_dallas <- tract_demographic_data[DallasBoundary, ] %>%
 # Dallas Police Department Incident Report {-}
 Using data from the Dallas Open Data portal this report is intended to summarize recent Dallas police department incidents. This report is intended to be updated once a month. An important caveat to the data presented within is the exclusion of all incidents involving juveniles. counts are subject to change over time. In order to keep this report manageable it will only include incidents classified as "Group A"
 
-## Notes
-* Paragraph with explanation of each table/visualization across sections.
-* Quick consistent views of crime in Dallas
-* Monthly level
-* where are they happening, where are they going down. 
-* What are the really big insights/takeaways from this?
-* Percent change map 
-* Monthly report vs quarterly report vs weekly report
-* Generate as a pdf
-* Add section on victimization of incidents
-* Incorporate at monthly level a section on arrests and section on victims
-* What are the typology of where crime exists/concentrated 
-* Jacob Kaplan what does he use on his website for rate?
-* What other crimes are occurring in places where there is a lot of violent gun crime?
-* Cluster analysis with normalization of counts
-* Include homicides at top order table by severity
-+ homicide, agg assault, robbery, burglary
-* Month to month change
-* Percent change bar graph year to year
-* Calculate crime rate at various intervals one month, one quarter, 12 months
-* For final table what are the most common incident types are occurring?
-* Include time of day as a categorical factor
-+ What types of crimes occur at various time intervals in city
-+ Morning, Afternoon, Evening, Late Night, Early Morning
-* Victims of vgc, car theft, etc.
-* Number of arrests
-+ what happened at release?
-
 ## Topline {-}
-* Are there one or two specific numbers we want to highlight each month as an entry?
+
 ```{r, Column Names, echo = FALSE, message=FALSE, warning=FALSE}
 names(dpdMini)
 ```
 
 ## Select Group A Incidents Overview {-}
-* Currently only includes incidents for the last 30 days of most recent data
-* Should be changed to include the most recent full month instead.
-* Table can be improved by adding
-+ Bars for percent change of Y2Y and Diff5Year variables
-+ Addition of title and subtitle
-+ Formatting of incident names
-+ Use this tutorial to build out framework https://glin.github.io/reactable/articles/building-twitter-followers.html
+
 ```{r, Incidents Table, echo = FALSE, message=FALSE, warning=FALSE}
 incident_nibrs <- dpdMini %>%
   st_drop_geometry(.) %>%
@@ -270,13 +236,6 @@ reactable(report_table,
 
 ## Line Graph of Incidents Over Time
 
-* Change colors of lines to be in line
-* Posibly make this interactive with plotly
-* Should we have 3 month average instead of total count?
-* Change names to be title case
-* Include popup of actual value and percent change
-* Include by division
-* Make bigger
 ```{r, Incident Line Graph, echo = FALSE, message=FALSE, warning=FALSE}
 #### Plot Time Series by Month #####
 incident_table %>%
@@ -308,10 +267,7 @@ incident_table %>%
 ```
 
 ## City of Dallas Selected Group A Incidents for September
-* Display of selected group A incidents for latest full month.
-* Division boundaries as an addition to this map?
-* Colors selected for points should be changed. Not all are easily distinctive.
-* Should this be a heatmap or cluster map instead?
+
 ```{r, fig.height=7, fig.width=7, echo=FALSE, message=FALSE, warning=FALSE}
 cpal_style <- "https://api.mapbox.com/styles/v1/owencpal/ckecb71jp22ct19qc1id28jku/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1Ijoib3dlbmNwYWwiLCJhIjoiY2tlYnR3emdxMGNhZzMwb2EzZWR4ajloNCJ9.P7Mujz8F3Rssq5-Q6dcvMw"
 
@@ -367,12 +323,7 @@ leaflet() %>%
     options = layersControlOptions(collapsed = FALSE))
 ```
 ## Violent Gun Crime Rate for the past 12 months
-* VGC rate calculated for the last 12 months using ACS 2019 data.
-* Should this be rate for the most recent full year instead?
-* Should rate be calculated using different incident types instead?
-* Add popup label to display tract name and actual crime rate for polygon
-* May need to clip and calculate total population using summarize within for tracts bordering city limits
-* Include other rates for different crime types
+
 ```{r, echo = FALSE, message=FALSE, warning=FALSE}
 bins <- BAMMtools::getJenksBreaks(tract_dallas$vgc_rate, k = 5)
 pal <- colorBin("BuPu", domain = tract_dallas$vgc_rate, bins = bins)
@@ -397,16 +348,7 @@ leaflet() %>%
 ```
 
 ## Select Group A Incidents by Division
-* Currently only includes incidents for the last 30 days of most recent data
-* Should be changed to include the most recent full month instead.
-* Table can be improved by adding
-+ Bars for percent change of Y2Y and Diff5Year variables
-+ Addition of title and subtitle
-+ Formatting of incident names
-+ Use this tutorial to build out framework https://glin.github.io/reactable/articles/building-twitter-followers.html
-+ Filter to only include specific divisions or incident type
-+ Find way to merge columns based on division column
-+ Dig into theming https://glin.github.io/reactable/articles/examples.html#theming
+
 ```{r, echo = FALSE, message=FALSE, warning=FALSE}
 #names(dpdMini)
 incident_nibrs_div <- dpdMini %>%
