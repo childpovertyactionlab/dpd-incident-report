@@ -24,10 +24,11 @@ library(rio)
 library(ggthemes)
 library(tidycensus)
 library(htmltools)
+library(arcgisbinding)
 library(reactable)
 
 #### CPAL theme #####
-CPAL.colors = c("#008097", "#ec008c", "#eaca2d", "#b4b4b4", "#9bd9e3", "#fdddd7")
+CPAL.colors = c("#008097", "#e98816", "#ec008c", "#eaca2d", "#b4b4b4", "#9bd9e3", "#fdddd7")
 
 theme_cpal <- function(base_size = 16, base_family = "sans") {
   colors <- deframe(ggthemes::ggthemes_data[["fivethirtyeight"]])
@@ -63,7 +64,7 @@ vgc_type <- c("AGG ASSAULT - NFV", "MURDER & NONNEGLIGENT MANSLAUGHTER", "NEGLIG
 
 #### Importing Dallas Open Data portals and filtering into data frames #####
 #dpdIncidents <- import("data/dpd_incidents_groupA.csv") %>%
-dpdIncidents <- import("C:/Users/Michael Lopez/Documents/GitHub/dpd_incidents_groupA.csv")
+dpdIncidents <- import("C:/Users/micha/Documents/GitHub/dpd_incidents_groupA.csv") %>%
   st_as_sf(coords = c(x = "x_coordinate", y = "y_coordinate"),
                                    crs = "ESRI:102738") %>%
   mutate(Date = as.Date(Date),
@@ -77,21 +78,26 @@ dpdIncidents <- import("C:/Users/Michael Lopez/Documents/GitHub/dpd_incidents_gr
          DateTime = format(paste(Date, Time), format="%Y-%m-%d %H:%M:%S"),
          hour = hour(Time),
          vgc_flag = ifelse(nibrs_crime %in% vgc_type & Firearm == 1, 1, 0)) %>%
-  select(service_number_id, type_of_incident, type_location, type_of_property, beat:council_district, victim_type, victim_race:victim_age,
-         hate_crime, weapon_used, gang_related_offense, zip_code:state, Date:vgc_flag) %>%
+  select(service_number_id, type_of_incident, type_location, type_of_property, beat:council_district, victim_type:victim_gender, hate_crime, weapon_used, gang_related_offense, zip_code:state, Date:vgc_flag) %>%
   st_transform(crs = 4269)
 
 unique(dpdIncidents$crime)
 
+currentmonth <- as.Date(paste0(year(today()), "-", month(max(dpdIncidents$Date)), "-01"))
+
 last30 <- max(dpdIncidents$Date)-days(30)
+
+vgc5year <- dpdIncidents %>%
+  filter(vgc_flag == 1,
+         Date >= max(Date)-years(5))
 
 vgc12months <- dpdIncidents %>%
   filter(vgc_flag == 1,
-         Date >= today()-years(1))
+         Date >= max(Date)-years(1))
 
-vgcIncidents <- dpdIncidents %>%
+vgc30days <- dpdIncidents %>%
   filter(vgc_flag == 1,
-         Date >= last30)
+         Date >= max(Date)-days(30))
 
 AggAs <- dpdIncidents %>%
   filter(crime == "AGG ASSAULT - NFV",
@@ -114,19 +120,27 @@ BurBus <- dpdIncidents %>%
          Date >= last30)
 
 dpdMini <- dpdIncidents %>%
-  filter(crime %in% c("AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS"))
+  filter(crime %in% c("AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS", "MURDER & NONNEGLIGENT MANSLAUGHTER")) %>%
+  filter(Date < currentmonth)
 
 #### Import tenth mile grid of the City of Dallas #####
 grid_incidents <- st_read("data/dallas_tenthmilegrid.geojson") %>%
   st_transform(crs = 4269) %>%
-  mutate(pt_count = lengths(st_intersects(., vgcIncidents)))
+  mutate(vgc_5year = lengths(st_intersects(., vgc5year)),
+         vgc_12months = lengths(st_intersects(., vgc12months)),
+         vgc_5yearAvg = vgc_5year/5,
+         vgc_perch = (vgc_12months-vgc_5yearAvg)/vgc_5yearAvg)
 
-#### Import City of Dallas outline #####
-#st_layers("E:/CPAL Dropbox/Data Library/Data.gdb")
-DallasBoundary <- st_read("E:/CPAL Dropbox/Data Library/Data.gdb", layer = "Dallas_Simple") %>%
+#### Import  Dallas boundaries #####
+DallasBoundary <- st_read("data/dallas_simpleboundary.geojson") %>%
   st_transform(crs = 4269)
 
-#### ACS Data #####
+dpd_beats <- st_read("data/dpd_beats.geojson") %>%
+  st_transform(crs = 4269)
+
+dpd_divisions <- st_read("data/dpd_divisions.geojson") %>%
+  st_transform(crs = 4269)
+
 #### ACS Data #####
 acs_var <- c(
   tot_pop = "B01003_001", #total population
@@ -166,12 +180,8 @@ Using data from the Dallas Open Data portal this report is intended to summarize
 
 ## Topline {-}
 
-```{r, Column Names, echo = FALSE, message=FALSE, warning=FALSE}
-names(dpdMini)
-```
-
 ## Select Group A Incidents Overview {-}
-
+The table below contains an overview of selected group A incidents for the most recent complete month (September). Data focuses on the count of incidents within the full month compared to the same month for the previous year and a five year average for the specified month. 
 ```{r, Incidents Table, echo = FALSE, message=FALSE, warning=FALSE}
 incident_nibrs <- dpdMini %>%
   st_drop_geometry(.) %>%
@@ -188,7 +198,7 @@ incident_vgc <- dpdIncidents %>%
 incident_table <- full_join(incident_nibrs, incident_vgc) %>%
   filter(Year > 2016)
 
-recent_month <- month(today()-days(14))
+recent_month <- month(today())-month(1)
 
 report_table <- incident_table %>%
   filter(Month == recent_month) %>%
@@ -197,46 +207,85 @@ report_table <- incident_table %>%
   pivot_wider(names_from = Year,
               names_prefix = "dpd_",
               values_from = count) %>%
-  mutate(Year2Year = paste0(round((dpd_2021-dpd_2020)/dpd_2020*100, digits = 1), "%"),
+  mutate(Year2Year = round((dpd_2021-dpd_2020)/dpd_2020, digits = 3),
          Avg5Year = (dpd_2017+dpd_2018+dpd_2019+dpd_2020+dpd_2021)/5,
-         Diff5Year = paste0(round((dpd_2021-Avg5Year)/Avg5Year*100, digits = 1), "%")) %>%
+         Diff5Year = round((dpd_2021-Avg5Year)/Avg5Year, digits = 3),
+         crime = factor(crime, levels = c("MURDER & NONNEGLIGENT MANSLAUGHTER", "VIOLENT GUN CRIME", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS"))) %>%
   select(-(dpd_2017:dpd_2019))
 
 # Render a bar chart with a label on the left
-bar_chart <- function(label, width = "100%", height = "14px", fill = "#00bfc4", background = NULL) {
-  bar <- div(style = list(background = fill, width = width, height = height))
-  chart <- div(style = list(flexGrow = 1, marginLeft = "6px", background = background), bar)
-  div(style = list(display = "flex", alignItems = "center"), label, chart)
+#####
+bar_chart_pos_neg <- function(label, value, max_value = 1, height = "16px",
+                              pos_fill = "#008097", neg_fill = "#ec008c") {
+  neg_chart <- div(style = list(flex = "1 1 0"))
+  pos_chart <- div(style = list(flex = "1 1 0"))
+  width <- paste0(abs(value / max_value) * 100, "%")
+
+  if (value < 0) {
+    bar <- div(style = list(marginLeft = "8px", background = neg_fill, width = width, height = height))
+    chart <- div(style = list(display = "flex", alignItems = "center", justifyContent = "flex-end"), label, bar)
+    neg_chart <- tagAppendChild(neg_chart, chart)
+  } else {
+    bar <- div(style = list(marginRight = "8px", background = pos_fill, width = width, height = height))
+    chart <- div(style = list(display = "flex", alignItems = "center"), bar, label)
+    pos_chart <- tagAppendChild(pos_chart, chart)
+  }
+
+  div(style = list(display = "flex"), neg_chart, pos_chart)
 }
 
-reactable(report_table,
+#####
+tbl_incidents <- reactable(report_table,
+          compact = TRUE,
+          class = "cpal-tbl",
+          defaultSorted = c("crime"),
           columns = list(
             crime = colDef(
-              name = "NIBRS Incident"),
+              name = "NIBRS",
+              width = 200),
             dpd_2020 = colDef(
               name = "2020 Incidents"),
             dpd_2021 = colDef(
               name = "2021 Incidents"),
             Year2Year = colDef(
-              name = "Percent Change Year to Year"),
+              name = "Per Change YtY",
+              defaultSortOrder = "desc",
+              cell = function(value) {
+                label <- paste0(format(value*100, nsmall = 1), "%")
+                bar_chart_pos_neg(label, value)
+              },
+              align = "center",
+              minWidth = 200
+              ),
             Avg5Year = colDef(
-              name = "5 Year Average"),
+              name = "5 Year Avg",
+              defaultSortOrder = "desc"),
             Diff5Year = colDef(
-              name = "5 Year Average Difference")
-            ),
-          theme = reactableTheme(
-            headerStyle = list(
-              "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
-              "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
-              borderColor = "#555"
+              name = "5 Year Avg Diff",
+              defaultSortOrder = "desc",
+              cell = function(value) {
+                label <- paste0(format(value*100, nsmall = 1), "%")
+                bar_chart_pos_neg(label, value)
+              },
+              align = "center",
+              minWidth = 200
               )
+            ),
             )
-          )
+
+div(class = "cpal-table",
+  div(class = "cpal-header",
+    h2(class = "cpal-title", "Selected Group A Incidents for September 2021"),
+    "Incidents compared to averages of incident data since 2016"
+  ),
+  tbl_incidents
+)
 ```
 
 ## Line Graph of Incidents Over Time
 
-```{r, Incident Line Graph, echo = FALSE, message=FALSE, warning=FALSE}
+Line graph below visualizes a three month average of selected group A incidents since 2017. 
+```{r, Incident Line Graph, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
 #### Plot Time Series by Month #####
 incident_table %>%
   mutate(YearMonth = as.Date(paste0(Year, "-", Month, "-01"))) %>%
@@ -263,67 +312,53 @@ incident_table %>%
   ) +
   theme_cpal() +
   theme(legend.position = "bottom",
-        legend.title = element_blank())
+        legend.title = element_blank(),
+        legend.text=element_text(size=10))
 ```
 
 ## City of Dallas Selected Group A Incidents for September
-
+This map displays the average percent change in violen gun crimes for the past 12 months in comparison to an average of incidents over the last 5 years. All incidents are aggregated to a tenth mile width grid.
 ```{r, fig.height=7, fig.width=7, echo=FALSE, message=FALSE, warning=FALSE}
 cpal_style <- "https://api.mapbox.com/styles/v1/owencpal/ckecb71jp22ct19qc1id28jku/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1Ijoib3dlbmNwYWwiLCJhIjoiY2tlYnR3emdxMGNhZzMwb2EzZWR4ajloNCJ9.P7Mujz8F3Rssq5-Q6dcvMw"
 
 map_attr <- "© <a href='https://www.mapbox.com/map-feedback/'>Mapbox</a> Basemap © <a href='https://childpovertyactionlab.org/'>Child Poverty Action Lab</a>"
 
+vgc_grid <- grid_incidents %>%
+  filter(!is.na(vgc_perch))
+
+minVal <- min(vgc_grid$vgc_perch, na.rm = TRUE)
+maxVal <- max(vgc_grid$vgc_perch, na.rm = TRUE)
+domain <- c(minVal,maxVal)
+
+colorPal <- c(colorRampPalette(colors = c("#008097", "white"), space = "Lab")(abs(minVal)),
+              colorRampPalette(colors = c("white", "#ec008c"), space = "Lab")(maxVal))
+
 leaflet() %>%
   setView(lng = -96.7970, lat = 32.7767, zoom = 10) %>%
   addTiles(urlTemplate = cpal_style, attribution = map_attr) %>%
-  addCircleMarkers(data = vgcIncidents,
-                   stroke = FALSE,
-                   radius = 4,
-                   fillOpacity = 1,
-                   fillColor = "#008097",
-                   group = "Violent Gun Crimes") %>%
-    addCircleMarkers(data = AggAs,
-                   stroke = FALSE,
-                   radius = 4,
-                   fillOpacity = 1,
-                   fillColor = "#ec008c",
-                   group = "Aggravated Assault (NFV)") %>%
-    addCircleMarkers(data = RobBus,
-                   stroke = FALSE,
-                   radius = 4,
-                   fillOpacity = 1,
-                   fillColor = "#eaca2d",
-                   group = "Robbery (Business)") %>%
-    addCircleMarkers(data = RobInd,
-                   stroke = FALSE,
-                   radius = 4,
-                   fillOpacity = 1,
-                   fillColor = "#b4b4b4",
-                   group = "Robbery (Individual)") %>%
-    addCircleMarkers(data = BurRes,
-                   stroke = FALSE,
-                   radius = 4,
-                   fillOpacity = 1,
-                   fillColor = "#9bd9e3",
-                   group = "Burglary (Residential)") %>%
-    addCircleMarkers(data = BurBus,
-                   stroke = FALSE,
-                   radius = 4,
-                   fillOpacity = 1,
-                   fillColor = "#fdddd7",
-                   group = "Burglary (Business)") %>%
-  addPolygons(data = DallasBoundary,
+  addPolygons(data = vgc_grid,
+              fillColor = ~get('colorBin')(colorPal,
+                                           domain)(vgc_perch),
+              label = ~paste0(round(vgc_perch*100, digits = 2), "%"),
+              color = FALSE,
+              fillOpacity = 0.7,
+              opacity = 1,
+              weight = 1,
+              group = "Violent Gun Crimes")  %>%
+    addPolygons(data = dpd_divisions,
               fill = FALSE,
               color = "#008097",
               opacity = 1,
               weight = 2) %>%
-  addLayersControl(
-    overlayGroups = c("Violent Gun Crimes", "Aggravated Assault (NFV)", "Robbery (Business)", "Robbery (Individual)", "Burglary (Residential)", "Burglary (Business)"),
-    position = "topright",
-    options = layersControlOptions(collapsed = FALSE))
+  addLegend(data = vgc_grid, 
+            "topleft", 
+            pal = colorBin(colorPal, domain = domain*100),
+            values = ~domain,
+            title = "VGC Percent Change (5 Year)",
+            opacity = 0.9)
 ```
 ## Violent Gun Crime Rate for the past 12 months
-
+This map displays the violent gun crime rate (per 10,000 residents) for the past 12 months by census tract. 
 ```{r, echo = FALSE, message=FALSE, warning=FALSE}
 bins <- BAMMtools::getJenksBreaks(tract_dallas$vgc_rate, k = 5)
 pal <- colorBin("BuPu", domain = tract_dallas$vgc_rate, bins = bins)
@@ -336,8 +371,9 @@ leaflet() %>%
               color = FALSE,
               fillOpacity = 0.7,
               opacity = 1,
-              weight = 1) %>%
-  addPolygons(data = DallasBoundary,
+              weight = 1,
+              label = ~paste("VGC Rate:", vgc_rate)) %>%
+  addPolygons(data = dpd_divisions,
               fill = FALSE,
               color = "#008097",
               opacity = 1,
@@ -346,6 +382,96 @@ leaflet() %>%
             title = "Violent Gun Crime Rate",
             opacity = 1)
 ```
+```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
+dpdMini %>%
+  st_drop_geometry(.) %>%
+  filter(Date >= as.Date("2021-09-01") & Date < as.Date("2021-10-01")) %>%  
+  group_by(type_location) %>%
+  summarize(victim_count = n()) %>%
+  arrange(desc(victim_count)) %>%
+  mutate(perc = victim_count/sum(victim_count)) %>%
+  slice_head(., n = 7) %>%
+  ggplot(
+    aes(
+      x = type_location,
+      y = victim_count,
+      #      group = crime_category,
+      #      color = victim_race,
+      fill = type_location,
+    )
+  ) +
+  geom_bar(size=1, alpha = 1, stat = "identity") +
+  #  scale_color_manual(values = CPAL.color.eight) +
+  scale_fill_manual(values = CPAL.colors) +
+  geom_text(aes(label = scales::percent(perc, accuracy = 0.1)),
+            vjust = 2, color = "#FFFFFF", fontface = "bold", size = 7) +
+  #  scale_size_manual(values = 3) +
+  #  theme(legend.position = "none") +
+  labs(
+    title = "Violent Gun Crime by Premise",
+    subtitle = "For the month of September 2021",
+    x = "",
+    y = "",
+    color = 'VARIABLE'
+  ) +
+  theme_cpal() +
+  theme(axis.text.x=element_text(angle=30, hjust=0.7, vjust = 0.7))
+
+```
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
+plot.demo <- as_tibble(cbind(victim_race = c("American Indian or Alaska Native", "Asian","Black", "Hispanic or Latino", "White"),
+                             type = c("City", "City", "City", "City", "City"),
+                             per = c(0.014, 0.0336, 0.2395, 0.4180, 0.2897))) %>%
+  #per = c(0, 0, 0.56, 0.32, 0.02))) %>% #SC Quadrant
+  mutate(per = as.double(per))
+
+plot.vgc <- dpdMini %>%
+  st_drop_geometry(.) %>%
+  filter(Date >= as.Date("2021-09-01") & Date < as.Date("2021-10-01")) %>%
+  drop_na(victim_race) %>%
+  group_by(victim_race) %>%
+  summarize(victim_count = n()) %>%
+  mutate(type = "Incident Victims",
+         per = victim_count/sum(victim_count)) %>% #EDIT FOR OTHER GEOGRAPHIES
+  filter(victim_race != "Unknown",
+         victim_race != "NH",
+         victim_race != "Native Hawaiian/Pacific Islander",
+         #victim_race != "American Indian or Alaska Native",
+         victim_race != "Middle Eastern",
+         victim_race != "")
+
+plot.race <- full_join(plot.demo, plot.vgc) %>%
+  mutate(type = as.factor(type)) %>%
+  filter(per != 0)
+
+plot.race %>%
+  ggplot(
+    aes(
+      x = victim_race,
+      y = per,
+      fill = type
+    )
+  ) +
+  geom_bar(size=1, alpha = 1, stat = 'identity', position = 'dodge') +
+  scale_y_continuous(labels = scales::percent, limits = c(0,0.6)) +
+  scale_fill_manual(values = c("#008097", "#ec008c", "#eaca2d", "#b4b4b4", "#9bd9e3", "#fdddd7", "#9191E9")
+  ) +
+  theme_cpal() +
+  theme(legend.position = "bottom") +
+  labs(
+    title = "Incident Victims by selected incident types",
+    subtitle = "In comparison to city demographics (%).",
+    x = "",
+    y = "",
+    color = ""
+  ) +
+  theme(legend.title=element_blank())
+
+```
+
+
+
 
 ## Select Group A Incidents by Division
 
@@ -410,3 +536,4 @@ reactable(report_table_div,
             )
           )
 ```
+
