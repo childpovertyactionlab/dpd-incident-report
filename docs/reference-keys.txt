@@ -6,3 +6,4 @@ city-of-dallas-selected-group-a-incidents-for-september
 violent-gun-crime-rate-for-the-past-12-months
 notes
 select-group-a-incidents-by-division
+line-graph-of-total-incidents-over-time
