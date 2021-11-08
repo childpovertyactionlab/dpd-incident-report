@@ -7,3 +7,17 @@ violent-gun-crime-rate-for-the-past-12-months
 notes
 select-group-a-incidents-by-division
 line-graph-of-total-incidents-over-time
+report-framing
+city-of-dallas
+incidents-over-time
+line-graph-of-incidents-by-time-of-day
+typology-of-incidents
+incident-victims
+incident-arrests
+division
+city-of-dallas-overview
+incidents-by-time
+incidents-by-time-period
+incidents-across-geography
+clearance-rate
+incidents-by-arrests

@@ -54,13 +54,13 @@ h1 {
   font-family: 'Roboto', serif;
   font-size: 3em !important;
   color: #008097;
-  font-size: 18;
+  font-size: 14;
 }
 
 h2 {
   font-family: 'Roboto', serif;
   color: #4f4f4f;
-  font-size: 14;
+  font-size: 12;
 }
 
 h3, h4 {
@@ -152,7 +152,7 @@ li.appendix span, li.part span { /* for TOC part names */
   /* Center the table */
   margin: 0 auto;
   /* Reduce the table width */
-  width: 575px;
+  /* width: 900px; */
   font-family: Karla, "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
