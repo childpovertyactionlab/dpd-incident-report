@@ -26,7 +26,6 @@ library(leaflet)
 library(mapboxapi)
 library(lubridate)
 library(rio)
-library(ggthemes)
 library(tidycensus)
 library(htmltools)
 library(arcgisbinding)
@@ -46,56 +45,57 @@ dpdIncidents <- import("E:/CPAL Dropbox/Data Library/City of Dallas/04_Public Sa
          Year = year(Date),
          Month = month(Date),
          Day = day(Date),
+         division = str_to_title(division),
          crime_category = as.factor(nibrs_crime_category),
          crime = as.factor(nibrs_crime),
          Weekday = wday(Date),
          DateTime = format(paste(Date, Time), format="%Y-%m-%d %H:%M:%S"),
          hour = hour(Time),
          vgc_flag = ifelse(nibrs_crime %in% vgc_type & Firearm == 1, 1, 0)) %>%
-  select(service_number_id, type_of_incident, type_location, type_of_property, beat:council_district, victim_type:victim_gender, hate_crime, weapon_used, gang_related_offense, zip_code:state, Date:vgc_flag) %>%
+  select(service_number_id, type_of_incident, type_location, type_of_property, beat:council_district, victim_type:victim_gender, hate_crime, weapon_used, gang_related_offense, zip_code:state, Date:vgc_flag, tot_victims) %>%
   st_transform(crs = 4269)
 
-unique(dpdIncidents$crime)
+#unique(dpdIncidents$crime)
 
-currentmonth <- as.Date(paste0(year(today()), "-", month(max(dpdIncidents$Date)), "-01"))
+currentmonth <- as.Date(paste0(year(today()), "-", month(today()), "-01"))
 
-last30 <- max(dpdIncidents$Date)-days(31)
+last30 <- as.Date(paste0(year(today()), "-", month(max(dpdIncidents$Date)), "-01"))
 
 vgc5year <- dpdIncidents %>%
   filter(vgc_flag == 1,
-         Date >= max(Date)-years(5))
+         Date >= as.Date("2016-01-01"))
 
 vgc12months <- dpdIncidents %>%
   filter(vgc_flag == 1,
-         Date >= max(Date)-years(1))
+         Date >= as.Date("2021-01-01"))
 
 vgc30days <- dpdIncidents %>%
   filter(vgc_flag == 1,
-         Date >= max(Date)-days(31))
+         Date >= last30 & Date < currentmonth)
 
 AggAs <- dpdIncidents %>%
   filter(crime == "AGG ASSAULT - NFV",
-         Date >= last30)
+         Date >= last30 & Date < currentmonth)
 
 RobBus <- dpdIncidents %>%
   filter(crime == "ROBBERY-BUSINESS",
-         Date >= last30)
+         Date >= last30 & Date < currentmonth)
 
 RobInd <- dpdIncidents %>%
   filter(crime == "ROBBERY-INDIVIDUAL",
-         Date >= last30)
+         Date >= last30 & Date < currentmonth)
 
 BurRes <- dpdIncidents %>%
   filter(crime == "BURGLARY-RESIDENCE",
-         Date >= last30)
+         Date >= last30 & Date < currentmonth)
 
 BurBus <- dpdIncidents %>%
   filter(crime == "BURGLARY-BUSINESS",
-         Date >= last30)
+         Date >= last30 & Date < currentmonth)
 
 dpdMini <- dpdIncidents %>%
   filter(crime %in% c("AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS", "MURDER & NONNEGLIGENT MANSLAUGHTER")) %>%
-  filter(Date < currentmonth)
+  filter(Date >= last30 & Date < currentmonth)
 
 #### Import tenth mile grid of the City of Dallas #####
 grid_incidents <- st_read("data/dallas_tenthmilegrid.geojson") %>%
@@ -147,6 +147,126 @@ tract_demographic_data <- get_acs(
 tract_dallas <- tract_demographic_data[DallasBoundary, ] %>%
   mutate(vgc_count = lengths(st_intersects(., vgc12months)),
          vgc_rate = round(vgc_count/tot_popE*10000, digits = 1))
+
+incident_comp <- dpdIncidents %>%
+    filter(crime %in% c("AGG ASSAULT - NFV", "MURDER & NONNEGLIGENT MANSLAUGHTER") & Firearm == 1) %>%
+  filter((Year == 2021 & Month == month(last30)) |
+           (Year == 2020 & Month == month(last30)) |
+           (Year == 2021 & Month == month(last30)-month(1))) %>%
+  st_drop_geometry(.) %>%
+  group_by(Year, Month) %>%
+  summarise(count = n())
+
+incident_01 <- incident_comp %>%
+  filter(Year == 2021 & Month == month(last30))
+
+incident_02 <- incident_comp %>%
+  filter(Year == 2021 & Month == month(last30)-month(1))
+
+incident_03 <- incident_comp %>%
+  filter(Year == 2020 & Month == month(last30))
+
+incident_04 <- dpdIncidents %>%
+    filter(crime %in% c("AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS", "MURDER & NONNEGLIGENT MANSLAUGHTER")) %>%
+  filter((Year == 2021 & Month == month(last30))) %>%
+  st_drop_geometry(.) %>%
+  group_by(Year, Month) %>%
+  summarise(count = n())
+```
+
+```{r, High Risk Cells, include = FALSE}
+#### Import High Risk RTM Cells from most recent models
+st_layers("E:/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg")
+
+SE_HR <- st_read("E:/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg", layer = "SE_HighRisk") %>%
+  st_transform(crs = 4269)
+SC_HR <- st_read("E:/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg", layer = "SC_HighRisk") %>%
+  st_transform(crs = 4269)
+C_HR <- st_read("E:/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg", layer = "C_HighRisk") %>%
+  st_transform(crs = 4269)
+NC_HR <- st_read("E:/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg", layer = "NC_HighRisk") %>%
+  st_transform(crs = 4269)
+NE_HR <- st_read("E:/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg", layer = "NE_HighRisk") %>%
+  st_transform(crs = 4269)
+NW_HR <- st_read("E:/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg", layer = "NW_HighRisk") %>%
+  st_transform(crs = 4269)
+SW_HR <- st_read("E:/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg", layer = "SW_HighRisk") %>%
+  st_transform(crs = 4269)
+
+unique(dpdMini$division)
+
+SC_Mark <- dpdMini %>%
+  filter(division == "South Central") %>%
+  .[SC_HR, ] %>%
+  mutate(HighRisk = "TRUE") %>%
+  st_drop_geometry(.) %>%
+  select(service_number_id, HighRisk)
+
+SE_Mark <- dpdMini %>%
+  filter(division == "Southeast") %>%
+  .[SE_HR, ] %>%
+  mutate(HighRisk = "TRUE") %>%
+  st_drop_geometry(.) %>%
+  select(service_number_id, HighRisk)
+
+NE_Mark <- dpdMini %>%
+  filter(division == "Northeast") %>%
+  .[NE_HR, ] %>%
+  mutate(HighRisk = "TRUE") %>%
+  st_drop_geometry(.) %>%
+  select(service_number_id, HighRisk)
+
+NW_Mark <- dpdMini %>%
+  filter(division == "Northwest") %>%
+  .[NW_HR, ] %>%
+  mutate(HighRisk = "TRUE") %>%
+  st_drop_geometry(.) %>%
+  select(service_number_id, HighRisk)
+
+C_Mark <- dpdMini %>%
+  filter(division == "Central") %>%
+  .[C_HR, ] %>%
+  mutate(HighRisk = "TRUE") %>%
+  st_drop_geometry(.) %>%
+  select(service_number_id, HighRisk)
+
+SW_Mark <- dpdMini %>%
+  filter(division == "Southwest") %>%
+  .[SW_HR, ] %>%
+  mutate(HighRisk = "TRUE") %>%
+  st_drop_geometry(.) %>%
+  select(service_number_id, HighRisk)
+
+NC_Mark <- dpdMini %>%
+  filter(division == "North Central") %>%
+  .[NC_HR, ] %>%
+  mutate(HighRisk = "TRUE") %>%
+  st_drop_geometry(.) %>%
+  select(service_number_id, HighRisk)
+
+dpdMini <- bind_rows(SC_Mark, SE_Mark, NE_Mark, NW_Mark, C_Mark, SW_Mark, NC_Mark) %>%
+  left_join(dpdMini, .)
+
+rm(SC_Mark)
+rm(SE_Mark)
+rm(SW_Mark)
+rm(C_Mark)
+rm(NC_Mark)
+rm(NE_Mark)
+rm(NW_Mark)
+
+rm(SC_HR)
+rm(SE_HR)
+rm(SW_HR)
+rm(C_HR)
+rm(NC_HR)
+rm(NE_HR)
+rm(NW_HR)
+
+month_01 <- as.character(month(last30, abbr = FALSE, label = TRUE))
+month_02 <- as.character(month(last30 %m-% months(1), abbr = FALSE, label = TRUE))
+year_01 <- as.character(year(last30))
+year_02 <- as.character(year(last30-years(1)))
 ```
 
 # Report Framing
@@ -204,27 +324,29 @@ The reported U.S. violent crime rate includes murder, rape and sexual assault, r
 
 ## Main Takeaways {-}
 
-The violent crime rate for **October 2021** was **X#** per 10,000 residents.
+The violent crime rate for `r paste(month_01, year_01)` was `r round(incident_01$count/(1304379/10000), digits = 3)` per 10,000 residents.
 
-In the month of **October 2021** there was a total of **##** violent gun crimes across the city. 
-This is an increase/decrease of **X%** from the prior month, and an increase/decrease of **Y%** from **October 2020**.
+In the month of `r paste(month_01, year_01)` there was a total of `r incident_01$count` violent gun crimes across the city. 
+
+This is an `r ifelse(incident_01$count > incident_02$count, "increase", "decrease")` of `r paste0(round(((incident_01$count-incident_02$count)/incident_02$count)*100, digits = 1), "%")` from `r paste(month_02, year_01)`, and an `r ifelse(incident_01$count > incident_03$count, "increase", "decrease")` of `r paste0(round(((incident_01$count-incident_03$count)/incident_03$count)*100, digits = 1), "%")` from `r paste(month_01, year_02)`.
 
 There were **##** incidents with 4 or more victims across the city.
 
-**Z%** of all violent gun crimes in October occured in **DivisionX**  
+**Z%** of all violent gun crimes in October occurred in **DivisionX**  
 
 ## Select Group A Incidents Overview {-}
 
 The table below contains an overview of selected group A incidents for the most recent complete month (September). Data focuses on the count of incidents within the full month compared to the same month for the previous year and a three year average for the specified month. 
 
 ```{r, Incidents Table, echo = FALSE, message=FALSE, warning=FALSE, fig.width=12,fig.height=8}
-incident_nibrs <- dpdMini %>%
+incident_nibrs <- dpdIncidents %>%
+  filter(crime %in% c("AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS", "MURDER & NONNEGLIGENT MANSLAUGHTER")) %>%
   st_drop_geometry(.) %>%
   group_by(Year, Month, crime) %>%
   summarize(count = n())
 
 incident_vgc <- dpdIncidents %>%
-  filter(vgc_flag == 1) %>%
+  filter(vgc_flag == 1 & crime %in% vgc_type) %>%
   mutate(crime = "VIOLENT GUN CRIME") %>%
   st_drop_geometry(.) %>%
   group_by(Year, Month, crime) %>%
