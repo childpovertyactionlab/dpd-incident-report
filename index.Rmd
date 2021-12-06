@@ -30,15 +30,15 @@ library(tidycensus)
 library(htmltools)
 library(arcgisbinding)
 library(reactable)
-library(CPALtools)
+library(CPAL)
 
 #### Defining vgc and firearms #####
 firearm <- c("Handgun", "Rifle","Firearm (Type Not Stated)", "Assault Weapon", "Unknown Type Gun", "Other/Unknown Gun", "Shotgun", "Other Gun", "Other Firearm")
 vgc_type <- c("AGG ASSAULT - NFV", "MURDER & NONNEGLIGENT MANSLAUGHTER", "NEGLIGENT MANSLAUGHTER")
 
 #### Importing Dallas Open Data portals and filtering into data frames #####
-#dpdIncidents <- import("E:/CPAL Dropbox/Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Incidents by Type/GroupA.csv") %>%
-dpdIncidents <- import("C:/Users/micha/CPAL Dropbox/Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Incidents by Type/GroupA.csv") %>%
+dpdIncidents <- import("E:/CPAL Dropbox/Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Incidents by Type/GroupA.csv") %>%
+# <- import("C:/Users/micha/CPAL Dropbox/Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Incidents by Type/GroupA.csv") %>%
   st_as_sf(coords = c(x = "x_coordinate", y = "y_coordinate"),
                                    crs = "ESRI:102738") %>%
   mutate(Date = as.Date(Date),
@@ -163,8 +163,8 @@ incident_04 <- dpdIncidents %>%
 
 ```{r, High Risk Cells, include = FALSE}
 #### Import High Risk RTM Cells from most recent models
-hr_directory <- "C:/Users/micha/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg"
-#hr_directory <- "E:/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg"
+#hr_directory <- "C:/Users/micha/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg"
+hr_directory <- "E:/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg"
 
 SE_HR <- st_read(hr_directory, layer = "SE_HighRisk") %>%
   st_transform(crs = 4269)
@@ -464,9 +464,12 @@ incident_table %>%
 
 ## Average Incidents by Time of Day {-}
 
-For the month of October
-**X%** of incidents across the city occurred between **HH:MM:** and **HH:MM:**
-**Y%** of incidents across the city occurred between **HH:MM:** and **HH:MM:**
+``` {r, include = FALSE}
+#For the month of **`r paste(month_01, year_01)`**
+#**X%** of incidents across the city occurred between **HH:MM:** and **HH:MM:**
+#**Y%** of incidents across the city occurred between **HH:MM:** and **HH:MM:**
+
+```
 
 ## Incidents by Time Period {-}
 
@@ -541,19 +544,20 @@ dpdMini %>%
   theme(axis.text.x=element_text(angle=30, hjust=0.7, vjust = 0.7),
         legend.position = "none")
 
-```
-
 ## Incidents Within Multi-Family Residences {-}
 
-Table or bar chart describing the most common types of incidents within multi-family premises (include parking lots, buildings, etc)
+#Table or bar chart describing the most common types of incidents within multi-family premises (include parking lots, buildings, etc)
 
 ## Incidents Within Single-Family Residences {-}
 
-Table or bar chart describing the most common types of incidents within single-family premises (include occupied, unoccupied, etc)
+#Table or bar chart describing the most common types of incidents within single-family premises (include occupied, unoccupied, etc)
 
 ## Incidents Within Commercial Businesses {-}
 
-Table or bar chart describing the most common types of incidents within commercial premises (include parking lots, tabc location, occupied/vacant, etc)
+#Table or bar chart describing the most common types of incidents within commercial premises (include parking lots, tabc location, occupied/vacant, etc)
+
+
+```
 
 # Incident Victims
 
