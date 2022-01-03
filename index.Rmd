@@ -79,7 +79,7 @@ dpdIncidents <- import("E:/CPAL Dropbox/Data Library/City of Dallas/04_Public Sa
 
 currentmonth <- as.Date(paste0(year(today()), "-", month(today()), "-01"))
 
-last30 <- as.Date(paste0(year(today()), "-", month(max(dpdIncidents$Date)), "-01"))
+last30 <- currentmonth-months(1)
 
 vgc5year <- dpdIncidents %>%
   filter(vgc_flag == 1,
@@ -321,7 +321,7 @@ incident_table <- full_join(incident_nibrs, incident_vgc) %>%
                                                                         "ERROR"
                               ))))))))
 
-recent_month <- month(today())-month(1)
+recent_month <- month(last30)
 
 report_table <- incident_table %>%
   filter(Month == recent_month) %>%
@@ -351,7 +351,7 @@ report_table <- incident_table %>%
                                                           ifelse(crime == "BURGLARY-RESIDENCE", 6,
                                                                  ifelse(crime == "BURGLARY-BUSINESS", 7,
                                                                         "ERROR"
-                              ))))))))%>%
+                              )))))))) %>%
   select(-(dpd_2017:dpd_2019), -crime) %>%
   relocate(crime_order, crime_title, dpd_2020, dpd_2021, Year2Year, Avg3Year, Diff3Year)
 
@@ -615,7 +615,11 @@ plot.race %>%
 
 ## Clearance Rate {-}
 
+**Currently Under Construction**
+
 ## Incidents by arrests {-}
+
+**Currently Under Construction**
 
 # Division
 
