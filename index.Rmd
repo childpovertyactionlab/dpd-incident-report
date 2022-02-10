@@ -30,7 +30,7 @@ library(tidycensus)
 library(htmltools)
 library(arcgisbinding)
 library(reactable)
-library(CPAL)
+library(CPALtools)
 
 #### Defining vgc and firearms #####
 firearm <- c("Handgun", "Rifle","Firearm (Type Not Stated)", "Assault Weapon", "Unknown Type Gun", "Other/Unknown Gun", "Shotgun", "Other Gun", "Other Firearm")
@@ -137,25 +137,25 @@ dpd_divisions <- st_read("data/dpd_divisions.geojson") %>%
 
 incident_comp <- dpdIncidents %>%
     filter(crime %in% c("AGG ASSAULT - NFV", "MURDER & NONNEGLIGENT MANSLAUGHTER") & Firearm == 1) %>%
-  filter((Year == 2021 & Month == month(last30)) |
-           (Year == 2020 & Month == month(last30)) |
-           (Year == 2021 & Month == month(last30)-month(1))) %>%
+  filter((Year == 2022 & Month == month(last30)) |
+           (Year == 2021 & Month == month(last30)) |
+           (Year == 2021 & Month == month(12))) %>%
   st_drop_geometry(.) %>%
   group_by(Year, Month) %>%
   summarise(count = n())
 
 incident_01 <- incident_comp %>%
-  filter(Year == 2021 & Month == month(last30))
+  filter(Year == 2022 & Month == month(last30))
 
 incident_02 <- incident_comp %>%
-  filter(Year == 2021 & Month == month(last30)-month(1))
+  filter(Year == 2021 & Month == month(12)) #month(last30)-month(1)
 
 incident_03 <- incident_comp %>%
-  filter(Year == 2020 & Month == month(last30))
+  filter(Year == 2021 & Month == month(last30))
 
 incident_04 <- dpdIncidents %>%
     filter(crime %in% c("AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS", "MURDER & NONNEGLIGENT MANSLAUGHTER")) %>%
-  filter((Year == 2021 & Month == month(last30))) %>%
+  filter((Year == 2022 & Month == month(last30))) %>%
   st_drop_geometry(.) %>%
   group_by(Year, Month) %>%
   summarise(count = n())
@@ -310,7 +310,9 @@ incident_vgc <- dpdIncidents %>%
   summarize(count = n())
 
 incident_table <- full_join(incident_nibrs, incident_vgc) %>%
-  filter(Year > 2016) %>%
+  mutate(Date = as.Date(paste0(Year, "-", Month, "-01"))) %>%
+  filter(Year > 2016,
+         Date <= currentmonth) %>%
   mutate(crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
                               ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
                                      ifelse(crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
@@ -326,13 +328,17 @@ recent_month <- month(last30)
 report_table <- incident_table %>%
   filter(Month == recent_month) %>%
   ungroup(.) %>%
-  select(-Month) %>%
+  select(-Month, -Date) %>%
   pivot_wider(names_from = Year,
               names_prefix = "dpd_",
               values_from = count) %>%
-  mutate(Year2Year = round((dpd_2021-dpd_2020)/dpd_2020, digits = 3),
-         Avg3Year = round((dpd_2019+dpd_2020+dpd_2021)/3, digits = 3),
-         Diff3Year = round((dpd_2021-Avg3Year)/Avg3Year, digits = 3),
+  mutate(dpd_2022 = ifelse(is.na(dpd_2022), 0, dpd_2022),
+         dpd_2021 = ifelse(is.na(dpd_2021), 0, dpd_2021), 
+         dpd_2020 = ifelse(is.na(dpd_2020), 0, dpd_2020),
+         dpd_2019 = ifelse(is.na(dpd_2019), 0, dpd_2019),
+         Year2Year = round((dpd_2022-dpd_2021)/dpd_2021, digits = 3),
+         Avg3Year = round((dpd_2020+dpd_2021+dpd_2022)/3, digits = 3),
+         Diff3Year = round((dpd_2022-Avg3Year)/Avg3Year, digits = 3),
          crime = factor(crime, levels = c("MURDER & NONNEGLIGENT MANSLAUGHTER", "VIOLENT GUN CRIME", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS")),
          crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
                               ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
@@ -352,8 +358,8 @@ report_table <- incident_table %>%
                                                                  ifelse(crime == "BURGLARY-BUSINESS", 7,
                                                                         "ERROR"
                               )))))))) %>%
-  select(-(dpd_2017:dpd_2019), -crime) %>%
-  relocate(crime_order, crime_title, dpd_2020, dpd_2021, Year2Year, Avg3Year, Diff3Year)
+  select(-(dpd_2017:dpd_2020), -crime) %>%
+  relocate(crime_order, crime_title, dpd_2021, dpd_2022, Year2Year, Avg3Year, Diff3Year)
 
 # Render a bar chart with a label on the left
 #####
@@ -367,14 +373,15 @@ bar_chart_pos_neg <- function(label, value, max_value = 1, height = "16px",
     bar <- div(style = list(marginLeft = "8px", background = neg_fill, width = width, height = height))
     chart <- div(style = list(display = "flex", alignItems = "center", justifyContent = "flex-end"), label, bar)
     neg_chart <- tagAppendChild(neg_chart, chart)
+  
   } else {
     bar <- div(style = list(marginRight = "8px", background = pos_fill, width = width, height = height))
     chart <- div(style = list(display = "flex", alignItems = "center"), bar, label)
     pos_chart <- tagAppendChild(pos_chart, chart)
-  }
+  } 
 
   div(style = list(display = "flex"), neg_chart, pos_chart)
-}
+  }
 
 #####
 tbl_incidents <- reactable(report_table,
@@ -387,10 +394,10 @@ tbl_incidents <- reactable(report_table,
               show = FALSE),
             crime_title = colDef(
               name = "NIBRS"),
-            dpd_2020 = colDef(
-              name = "2020"),
             dpd_2021 = colDef(
               name = "2021"),
+            dpd_2022 = colDef(
+              name = "2022"),
             Year2Year = colDef(
               name = "One Year",
               defaultSortOrder = "desc",
@@ -414,7 +421,7 @@ tbl_incidents <- reactable(report_table,
               )
             ),
           columnGroups = list(
-            colGroup(name = paste(month(last30, label = TRUE, abbr = FALSE), "Incidents"), columns = c("dpd_2020", "dpd_2021")),
+            colGroup(name = paste(month(last30, label = TRUE, abbr = FALSE), "Incidents"), columns = c("dpd_2021", "dpd_2022")),
             colGroup(name = "Percent Change", columns = c("Year2Year", "Diff3Year")),
             colGroup(name = "Average", columns = c("Avg3Year"))
           )
@@ -422,7 +429,7 @@ tbl_incidents <- reactable(report_table,
 
 div(class = "cpal-table",
   div(class = "cpal-header",
-    h2(class = "cpal-title", "Selected Group A Incidents for September 2021"),
+    h2(class = "cpal-title", paste("Selected Group A Incidents for", month(last30, label = TRUE, abbr = FALSE), year(last30))),
     "Incidents compared to averages of incident data since 2019"
   ),
   tbl_incidents
@@ -626,7 +633,7 @@ plot.race %>%
 ## Select Group A Incidents by Division {-}
 
 ```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=12,fig.height=8}
-incident_nibrs_div <- dpdMini %>%
+incident_nibrs_div <- dpdIncidents %>%
   mutate(division = str_to_title(division)) %>%
   st_drop_geometry(.) %>%
   group_by(Year, Month, division, crime) %>%
@@ -650,7 +657,7 @@ incident_table_div <- full_join(incident_nibrs_div, incident_vgc_div) %>%
                                                           ifelse(crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
                                                                  ifelse(crime == "BURGLARY-BUSINESS", "Burglary (Business)",
                                                                         "ERROR"
-                              ))))))))
+                                                                 ))))))))
 
 report_table_div <- incident_table_div %>%
   filter(Month == recent_month) %>%
@@ -659,12 +666,13 @@ report_table_div <- incident_table_div %>%
   pivot_wider(names_from = Year,
               names_prefix = "dpd_",
               values_from = count) %>%
-  mutate(dpd_2021 = ifelse(is.na(dpd_2021), 0, dpd_2021), 
+  mutate(dpd_2022 = ifelse(is.na(dpd_2022), 0, dpd_2022),
+         dpd_2021 = ifelse(is.na(dpd_2021), 0, dpd_2021), 
          dpd_2020 = ifelse(is.na(dpd_2020), 0, dpd_2020),
          dpd_2019 = ifelse(is.na(dpd_2019), 0, dpd_2019),
-         Year2Year = round((dpd_2021-dpd_2020)/dpd_2020, digits = 3),
-         Avg3Year = round((dpd_2019+dpd_2020+dpd_2021)/3, digits = 3),
-         Diff3Year = round((dpd_2021-Avg3Year)/Avg3Year, digits = 3),
+         Year2Year = round((dpd_2022-dpd_2021)/dpd_2021, digits = 3),
+         Avg3Year = round((dpd_2020+dpd_2021+dpd_2022)/3, digits = 3),
+         Diff3Year = round((dpd_2022-Avg3Year)/Avg3Year, digits = 3),
          crime = factor(crime, levels = c("MURDER & NONNEGLIGENT MANSLAUGHTER", "VIOLENT GUN CRIME", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS")),
          crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
                               ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
@@ -674,7 +682,7 @@ report_table_div <- incident_table_div %>%
                                                           ifelse(crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
                                                                  ifelse(crime == "BURGLARY-BUSINESS", "Burglary (Business)",
                                                                         "ERROR"
-                              ))))))),
+                                                                 ))))))),
          crime_order = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", 1,
                               ifelse(crime == "VIOLENT GUN CRIME", 2,
                                      ifelse(crime == "AGG ASSAULT - NFV", 3,
@@ -683,65 +691,68 @@ report_table_div <- incident_table_div %>%
                                                           ifelse(crime == "BURGLARY-RESIDENCE", 6,
                                                                  ifelse(crime == "BURGLARY-BUSINESS", 7,
                                                                         "ERROR"
-                              ))))))))%>%
-  select(-(dpd_2017:dpd_2019), -crime) %>%
-  relocate(division, crime_order, crime_title, dpd_2020, dpd_2021, Year2Year, Avg3Year, Diff3Year)
+                                                                 ))))))))%>%
+  filter(crime_order != "ERROR") %>%
+  select(-(dpd_2017:dpd_2020), -crime) %>%
+  mutate(Year2Year = ifelse(Year2Year == "NaN", NA, Year2Year)) %>%
+  filter(!is.na(Year2Year)) %>%
+  relocate(division, crime_order, crime_title, dpd_2021, dpd_2022, Year2Year, Avg3Year, Diff3Year)
 
 #####
 tbl_incidents_div <- reactable(report_table_div,
-          compact = TRUE,
-          class = "cpal-tbl",
-          groupBy = "division",
-          defaultSorted = c("crime_order"),
-          columns = list(
-            division = colDef(
-              name = "Division"),
-            crime_order = colDef(
-              name = "Order",
-              show = FALSE),
-            crime_title = colDef(
-              name = "NIBRS"),
-            dpd_2020 = colDef(
-              name = "2020",
-              na = "-"),
-            dpd_2021 = colDef(
-              name = "2021",
-              na = "-"),
-            Year2Year = colDef(
-              name = "One Year",
-              na = "-",
-              cell = function(value) {
-                label <- paste0(format(value*100, nsmall = 1), "%")
-                bar_chart_pos_neg(label, value)
-              },
-              align = "center"
-              ),
-            Avg3Year = colDef(
-              name = "Three Year",
-              na = "-"),
-            Diff3Year = colDef(
-              name = "Three Years",
-              na = "-",
-              cell = function(value) {
-                label <- paste0(format(value*100, nsmall = 1), "%")
-                bar_chart_pos_neg(label, value)
-              },
-              align = "center"
-              )
-            ),
-          columnGroups = list(
-            colGroup(name = paste(month(last30, label = TRUE, abbr = FALSE), "Incidents"), columns = c("dpd_2020", "dpd_2021")),
-            colGroup(name = "Percent Change", columns = c("Year2Year", "Diff3Year")),
-            colGroup(name = "Average", columns = c("Avg3Year"))
-          )
-            )
+                               compact = TRUE,
+                               class = "cpal-tbl",
+                               groupBy = "division",
+                               defaultSorted = c("crime_order"),
+                               columns = list(
+                                 division = colDef(
+                                   name = "Division"),
+                                 crime_order = colDef(
+                                   name = "Order",
+                                   show = FALSE),
+                                 crime_title = colDef(
+                                   name = "NIBRS"),
+                                 dpd_2021 = colDef(
+                                   name = "2021",
+                                   na = "-"),
+                                 dpd_2022 = colDef(
+                                   name = "2022",
+                                   na = "-"),
+                                 Year2Year = colDef(
+                                   name = "One Year",
+                                   na = "-",
+                                   cell = function(value) {
+                                     label <- paste0(format(value*100, nsmall = 1), "%")
+                                     bar_chart_pos_neg(label, value)
+                                   },
+                                   align = "center"
+                                 ),
+                                 Avg3Year = colDef(
+                                   name = "Three Year",
+                                   na = "-"),
+                                 Diff3Year = colDef(
+                                   name = "Three Years",
+                                   na = "-",
+                                   cell = function(value) {
+                                     label <- paste0(format(value*100, nsmall = 1), "%")
+                                     bar_chart_pos_neg(label, value)
+                                   },
+                                   align = "center"
+                                 )
+                               ),
+                               columnGroups = list(
+                                 colGroup(name = paste(month(last30, label = TRUE, abbr = FALSE), "Incidents"), columns = c("dpd_2021", "dpd_2022")),
+                                 colGroup(name = "Percent Change", columns = c("Year2Year", "Diff3Year")),
+                                 colGroup(name = "Average", columns = c("Avg3Year"))
+                               )
+)
 
 div(class = "cpal-table",
-  div(class = "cpal-header",
-    h2(class = "cpal-title", paste("Selected Group A Incidents for", month(last30, label = TRUE, abbr = FALSE), year(last30))),
-    "Incidents compared to averages of incident data since 2019"
-  ),
-  tbl_incidents_div
+    div(class = "cpal-header",
+        h2(class = "cpal-title", paste("Selected Group A Incidents for", month(last30, label = TRUE, abbr = FALSE), year(last30))),
+        "Incidents compared to averages of incident data since 2019"
+    ),
+    tbl_incidents_div
 )
 ```
 
