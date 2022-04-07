@@ -1,0 +1,92 @@
+---
+title: 'Incident Map'
+output:
+  distill::distill_article:
+    toc:false:
+      theme: theme.css
+favicon: "images/favicon.ico"
+github-repo: childpovertyactionlab/DPD-incident-reports
+---
+
+## Violent Gun Crimes in `r paste(month_01, year_01)`
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE, layout="l-page", fig.height=8}
+leaflet() %>%
+#  setView(lng = -96.7970, lat = 32.7767, zoom = 10) %>%
+  addTiles(urlTemplate = cpal_mapbox, attribution = cpal_leaflet) %>%
+  addPolygons(data = SE_HR,
+              weight = 1,
+              opacity = 0.5,
+              color = "#686158",
+              #dashArray = "3",
+              fillOpacity = 0.3,
+              group = "High Risk Cell",
+              ) %>%
+    addPolygons(data = SC_HR,
+              weight = 1,
+              opacity = 0.5,
+              color = "#686158",
+              #dashArray = "3",
+              fillOpacity = 0.3,
+              group = "High Risk Cell",
+              ) %>%
+  addPolygons(data = SW_HR,
+              weight = 1,
+              opacity = 0.5,
+              color = "#686158",
+              #dashArray = "3",
+              fillOpacity = 0.3,
+              group = "High Risk Cell",
+              ) %>%
+  addPolygons(data = C_HR,
+              weight = 1,
+              opacity = 0.5,
+              color = "#686158",
+              #dashArray = "3",
+              fillOpacity = 0.3,
+              group = "High Risk Cell",
+              ) %>%
+  addPolygons(data = NE_HR,
+              weight = 1,
+              opacity = 0.5,
+              color = "#686158",
+              #dashArray = "3",
+              fillOpacity = 0.3,
+              group = "High Risk Cell",
+              ) %>%
+  addPolygons(data = NW_HR,
+              weight = 1,
+              opacity = 0.5,
+              color = "#686158",
+              #dashArray = "3",
+              fillOpacity = 0.3,
+              group = "High Risk Cell",
+              ) %>%
+  addPolygons(data = NC_HR,
+              weight = 1,
+              opacity = 0.5,
+              color = "#686158",
+              #dashArray = "3",
+              fillOpacity = 0.3,
+              group = "High Risk Cell",
+              ) %>%
+  addPolygons(data = dpd_divisions,
+              weight = 2,
+              opacity = 1,
+              color = "#686158",
+              #dashArray = "3",
+              fillOpacity = 0,
+              group = "DPD Divisions",
+              ) %>%
+  addCircleMarkers(data = vgc30days,
+                   stroke = FALSE,
+                   radius = 4,
+                   fillOpacity = 0.7,
+                   color = "#008097",
+                   group = "Violent Gun Crimes") %>%
+  addLayersControl(
+    overlayGroups = c("Violent Gun Crimes", "High Risk Cell"),
+    baseGroups = c("DPD Divisions"),
+    position = "topright",
+    options = layersControlOptions(collapsed = FALSE))
+```

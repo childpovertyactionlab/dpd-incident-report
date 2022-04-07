@@ -1,6 +1,0 @@
-book_filename: "DPD-incident-report"
-delete_merged_file: true
-language:
-  ui:
-    chapter_name: ""
-output_dir: "docs"

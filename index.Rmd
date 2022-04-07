@@ -1,21 +1,11 @@
 ---
-title: 'Dallas Police Department Incident Report'
-author: 'Child Poverty Action Lab'
-site: bookdown::bookdown_site
+title: 'Main Takeaways'
 output:
-  pdf_document:
-    toc: true
-    number_sections: true
-#output:
-#  pdf_document: default
-#  html_document:
-#    df_print: paged
-always_allow_html: true
-biblio-style: apalike
-link-citations: yes
+  distill::distill_article:
+    toc:false:
+      theme: theme.css
+favicon: "images/favicon.ico"
 github-repo: childpovertyactionlab/DPD-incident-reports
-favicon: images/favicon.ico
-documentclass: book
 ---
 
 ```{r Set-Up Block, include = FALSE}
@@ -32,13 +22,15 @@ library(arcgisbinding)
 library(reactable)
 library(CPALtools)
 
+datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
+#datalib <- "E:/CPAL Dropbox/" # Michael Desktop
+
 #### Defining vgc and firearms #####
 firearm <- c("Handgun", "Rifle","Firearm (Type Not Stated)", "Assault Weapon", "Unknown Type Gun", "Other/Unknown Gun", "Shotgun", "Other Gun", "Other Firearm")
 vgc_type <- c("AGG ASSAULT - NFV", "MURDER & NONNEGLIGENT MANSLAUGHTER", "NEGLIGENT MANSLAUGHTER")
 
 #### Importing Dallas Open Data portals and filtering into data frames #####
-dpdIncidents <- import("E:/CPAL Dropbox/Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Incidents by Type/GroupA.csv") %>%
-# <- import("C:/Users/micha/CPAL Dropbox/Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Incidents by Type/GroupA.csv") %>%
+dpdIncidents <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Incidents by Type/GroupA.csv")) %>%
   st_as_sf(coords = c(x = "x_coordinate", y = "y_coordinate"),
                                    crs = "ESRI:102738") %>%
   mutate(Date = as.Date(Date),
@@ -63,7 +55,6 @@ dpdIncidents <- import("E:/CPAL Dropbox/Data Library/City of Dallas/04_Public Sa
                              )
                       )
          ) %>%
-  select(service_number_id, type_of_incident, type_location, type_of_property, beat:council_district, victim_type:victim_gender, hate_crime, weapon_used, gang_related_offense, zip_code:state, Date:ToD, tot_victims) %>%
   mutate(crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
                               ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
                                      ifelse(crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
@@ -163,8 +154,7 @@ incident_04 <- dpdIncidents %>%
 
 ```{r, High Risk Cells, include = FALSE}
 #### Import High Risk RTM Cells from most recent models
-#hr_directory <- "C:/Users/micha/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg"
-hr_directory <- "E:/CPAL Dropbox/Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg"
+hr_directory <- paste0(datalib, "Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg")
 
 SE_HR <- st_read(hr_directory, layer = "SE_HighRisk") %>%
   st_transform(crs = 4269)
@@ -188,49 +178,49 @@ SC_Mark <- dpdMini %>%
   .[SC_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(service_number_id, HighRisk)
+  select(servnumid, HighRisk)
 
 SE_Mark <- dpdMini %>%
   filter(division == "Southeast") %>%
   .[SE_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(service_number_id, HighRisk)
+  select(servnumid, HighRisk)
 
 NE_Mark <- dpdMini %>%
   filter(division == "Northeast") %>%
   .[NE_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(service_number_id, HighRisk)
+  select(servnumid, HighRisk)
 
 NW_Mark <- dpdMini %>%
   filter(division == "Northwest") %>%
   .[NW_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(service_number_id, HighRisk)
+  select(servnumid, HighRisk)
 
 C_Mark <- dpdMini %>%
   filter(division == "Central") %>%
   .[C_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(service_number_id, HighRisk)
+  select(servnumid, HighRisk)
 
 SW_Mark <- dpdMini %>%
   filter(division == "Southwest") %>%
   .[SW_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(service_number_id, HighRisk)
+  select(servnumid, HighRisk)
 
 NC_Mark <- dpdMini %>%
   filter(division == "North Central") %>%
   .[NC_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(service_number_id, HighRisk)
+  select(servnumid, HighRisk)
 
 dpdMini <- bind_rows(SC_Mark, SE_Mark, NE_Mark, NW_Mark, C_Mark, SW_Mark, NC_Mark) %>%
   left_join(dpdMini, .)
@@ -242,14 +232,6 @@ rm(C_Mark)
 rm(NC_Mark)
 rm(NE_Mark)
 rm(NW_Mark)
-
-rm(SC_HR)
-rm(SE_HR)
-rm(SW_HR)
-rm(C_HR)
-rm(NC_HR)
-rm(NE_HR)
-rm(NW_HR)
 
 month_01 <- as.character(month(last30, abbr = FALSE, label = TRUE))
 month_02 <- as.character(month(last30 %m-% months(1), abbr = FALSE, label = TRUE))
@@ -273,11 +255,8 @@ vgc_hr <- dpdMini %>%
   filter(HighRisk == TRUE)
 ```
 
-The reported U.S. violent crime rate includes murder, rape and sexual assault, robbery, and assault
 
-# City of Dallas Overview
-
-## Main Takeaways {-}
+## `r paste(month_01, year_01)`
 
 The violent crime rate for **`r paste(month_01, year_01)`** was **`r round(incident_01$count/(1304379/10000), digits = 3)`** per 10,000 residents.
 
@@ -291,516 +270,4 @@ There were **`r nrow(filter(dpdMini, vgc_flag == 1 & tot_victims >= 4))`** incid
 
 **`r paste0(round(vgc_hr$count/incident_01$count*100, digit = 1), "%", " (", vgc_hr$count, ")")`** of Violent Gun Crimes occurred within a cell identified as "High Risk" by our most recent Risk Terrain Modeling Analysis.
 
-## Select Group A Incidents Overview {-}
-
-The table below contains an overview of selected group A incidents for the most recent complete month (`r paste(month_01, year_01)`). Data focuses on the count of incidents within the full month compared to the same month for the previous year and a three year average for the specified month. 
-
-```{r, Incidents Table, echo = FALSE, message=FALSE, warning=FALSE, fig.width=12,fig.height=8}
-incident_nibrs <- dpdIncidents %>%
-  filter(crime %in% c("AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS", "MURDER & NONNEGLIGENT MANSLAUGHTER")) %>%
-  st_drop_geometry(.) %>%
-  group_by(Year, Month, crime) %>%
-  summarize(count = n())
-
-incident_vgc <- dpdIncidents %>%
-  filter(vgc_flag == 1 & crime %in% vgc_type) %>%
-  mutate(crime = "VIOLENT GUN CRIME") %>%
-  st_drop_geometry(.) %>%
-  group_by(Year, Month, crime) %>%
-  summarize(count = n())
-
-incident_table <- full_join(incident_nibrs, incident_vgc) %>%
-  mutate(Date = as.Date(paste0(Year, "-", Month, "-01"))) %>%
-  filter(Year > 2016,
-         Date <= currentmonth) %>%
-  mutate(crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
-                              ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
-                                     ifelse(crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
-                                            ifelse(crime == "ROBBERY-BUSINESS", "Robbery (Business)",
-                                                   ifelse(crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
-                                                          ifelse(crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
-                                                                 ifelse(crime == "BURGLARY-BUSINESS", "Burglary (Business)",
-                                                                        "ERROR"
-                              ))))))))
-
-recent_month <- month(last30)
-
-report_table <- incident_table %>%
-  filter(Month == recent_month) %>%
-  ungroup(.) %>%
-  select(-Month, -Date) %>%
-  pivot_wider(names_from = Year,
-              names_prefix = "dpd_",
-              values_from = count) %>%
-  mutate(dpd_2022 = ifelse(is.na(dpd_2022), 0, dpd_2022),
-         dpd_2021 = ifelse(is.na(dpd_2021), 0, dpd_2021), 
-         dpd_2020 = ifelse(is.na(dpd_2020), 0, dpd_2020),
-         dpd_2019 = ifelse(is.na(dpd_2019), 0, dpd_2019),
-         Year2Year = round((dpd_2022-dpd_2021)/dpd_2021, digits = 3),
-         Avg3Year = round((dpd_2020+dpd_2021+dpd_2022)/3, digits = 3),
-         Diff3Year = round((dpd_2022-Avg3Year)/Avg3Year, digits = 3),
-         crime = factor(crime, levels = c("MURDER & NONNEGLIGENT MANSLAUGHTER", "VIOLENT GUN CRIME", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS")),
-         crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
-                              ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
-                                     ifelse(crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
-                                            ifelse(crime == "ROBBERY-BUSINESS", "Robbery (Business)",
-                                                   ifelse(crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
-                                                          ifelse(crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
-                                                                 ifelse(crime == "BURGLARY-BUSINESS", "Burglary (Business)",
-                                                                        "ERROR"
-                              ))))))),
-         crime_order = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", 1,
-                              ifelse(crime == "VIOLENT GUN CRIME", 2,
-                                     ifelse(crime == "AGG ASSAULT - NFV", 3,
-                                            ifelse(crime == "ROBBERY-BUSINESS", 4,
-                                                   ifelse(crime == "ROBBERY-INDIVIDUAL", 5,
-                                                          ifelse(crime == "BURGLARY-RESIDENCE", 6,
-                                                                 ifelse(crime == "BURGLARY-BUSINESS", 7,
-                                                                        "ERROR"
-                              )))))))) %>%
-  select(-(dpd_2017:dpd_2020), -crime) %>%
-  relocate(crime_order, crime_title, dpd_2021, dpd_2022, Year2Year, Avg3Year, Diff3Year)
-
-# Render a bar chart with a label on the left
-#####
-bar_chart_pos_neg <- function(label, value, max_value = 1, height = "16px",
-                              pos_fill = "#008097", neg_fill = "#ec008c") {
-  neg_chart <- div(style = list(flex = "1 1 0"))
-  pos_chart <- div(style = list(flex = "1 1 0"))
-  width <- paste0(abs(value / max_value) * 100, "%")
-
-  if (value < 0) {
-    bar <- div(style = list(marginLeft = "8px", background = neg_fill, width = width, height = height))
-    chart <- div(style = list(display = "flex", alignItems = "center", justifyContent = "flex-end"), label, bar)
-    neg_chart <- tagAppendChild(neg_chart, chart)
-  
-  } else {
-    bar <- div(style = list(marginRight = "8px", background = pos_fill, width = width, height = height))
-    chart <- div(style = list(display = "flex", alignItems = "center"), bar, label)
-    pos_chart <- tagAppendChild(pos_chart, chart)
-  } 
-
-  div(style = list(display = "flex"), neg_chart, pos_chart)
-  }
-
-#####
-tbl_incidents <- reactable(report_table,
-          compact = TRUE,
-          class = "cpal-tbl",
-          defaultSorted = c("crime_order"),
-          columns = list(
-            crime_order = colDef(
-              name = "Order",
-              show = FALSE),
-            crime_title = colDef(
-              name = "NIBRS"),
-            dpd_2021 = colDef(
-              name = "2021"),
-            dpd_2022 = colDef(
-              name = "2022"),
-            Year2Year = colDef(
-              name = "One Year",
-              defaultSortOrder = "desc",
-              cell = function(value) {
-                label <- paste0(format(value*100, nsmall = 1), "%")
-                bar_chart_pos_neg(label, value)
-              },
-              align = "center"
-              ),
-            Avg3Year = colDef(
-              name = "Three Year",
-              defaultSortOrder = "desc"),
-            Diff3Year = colDef(
-              name = "Three Years",
-              defaultSortOrder = "desc",
-              cell = function(value) {
-                label <- paste0(format(value*100, nsmall = 1), "%")
-                bar_chart_pos_neg(label, value)
-              },
-              align = "center"
-              )
-            ),
-          columnGroups = list(
-            colGroup(name = paste(month(last30, label = TRUE, abbr = FALSE), "Incidents"), columns = c("dpd_2021", "dpd_2022")),
-            colGroup(name = "Percent Change", columns = c("Year2Year", "Diff3Year")),
-            colGroup(name = "Average", columns = c("Avg3Year"))
-          )
-            )
-
-div(class = "cpal-table",
-  div(class = "cpal-header",
-    h2(class = "cpal-title", paste("Selected Group A Incidents for", month(last30, label = TRUE, abbr = FALSE), year(last30))),
-    "Incidents compared to averages of incident data since 2019"
-  ),
-  tbl_incidents
-)
-```
-
-# Incidents by Time
-
-## Count of Incidents by Year {-}
-
-```{r, Incident Line Graph, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
-#### Plot Time Series by Month #####
-incident_table %>%
-  mutate(YearMonth = as.Date(paste0(Year, "-", Month, "-01"))) %>%
-  group_by(crime_title) %>%
-  arrange(YearMonth) %>%
-  mutate(Avg3Month = zoo::rollmean(count, k = 3, fill = NA)) %>%
-  ungroup(.) %>%
-  ggplot(
-    aes(
-      x = YearMonth,
-      y = count,
-      group = crime_title,
-      color = crime_title
-    )
-  ) +
-  geom_line(size=1, alpha = 0.9, stat = "identity") +
-  scale_color_manual(values = cpal_palette(n=10, name = "cpal_ten")) +
-  labs(
-    title = "Select Group A Incidents Over Time",
-    subtitle = paste("Between January 2017 -", month(last30, label = TRUE, abbr = FALSE), year(last30)),
-    x = "",
-    y = "",
-    color = 'VARIABLE'
-  ) +
-  theme_cpal(base_size = 28) +
-  theme(legend.text=element_text(size=14))
-```
-
-## Average Incidents by Time of Day {-}
-
-``` {r, include = FALSE}
-#For the month of **`r paste(month_01, year_01)`**
-#**X%** of incidents across the city occurred between **HH:MM:** and **HH:MM:**
-#**Y%** of incidents across the city occurred between **HH:MM:** and **HH:MM:**
-
-```
-
-## Incidents by Time Period {-}
-
-Facet wrap pie charts of incident types grouped by time of day (early morning, morning, afternoon, evening, late night) 
-
-```{r, Facet Pie Charts, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
-
-dpdMini %>%
-  st_drop_geometry(.) %>%
-  mutate(ToD = factor(ToD, levels = c("Early Morning", "Morning", "Afternoon", "Evening", "Night"))) %>%
-  group_by(crime_title, ToD) %>%
-  summarize(count = n()) %>%
-  ungroup(.) %>%
-  group_by(crime_title) %>%
-  mutate(perc = count/sum(count)) %>%
-  ggplot(aes(x = ToD, y=perc, fill = crime_title)) +
-  geom_bar(stat = "identity") +
-  geom_text(aes(label = scales::percent(perc, accuracy = 0.1)),
-            vjust = 2, color = "#FFFFFF", fontface = "bold", size = 7) +
-
-  facet_wrap(~crime_title) +
-  scale_fill_manual(values = cpal_palette(n=10, name = "cpal_ten")) +
-  labs(
-    title = "Incidents by Time Period",
-    x = "",
-    y = "",
-    color = 'VARIABLE'
-  ) +
-  theme_cpal(base_size = 28) +
-  theme(axis.text.x=element_text(angle=45, hjust=1),
-        legend.position = "none")
-
-```
-
-
-# Typology of Incidents
-
-## Incidents by Location of Incident {-}
-
-```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
-dpdMini %>%
-  st_drop_geometry(.) %>%
-  group_by(type_location) %>%
-  summarize(victim_count = n()) %>%
-  arrange(desc(victim_count)) %>%
-  mutate(perc = victim_count/sum(victim_count)) %>%
-  slice_head(., n = 7) %>%
-  ggplot(
-    aes(
-      x = type_location,
-      y = victim_count,
-      #      group = crime_category,
-      #      color = victim_race,
-      fill = type_location,
-    )
-  ) +
-  geom_bar(size=1, alpha = 1, stat = "identity") +
-  #  scale_color_manual(values = CPAL.color.eight) +
-  scale_fill_manual(values = cpal_palette(n=10, name = "cpal_ten")) +
-  geom_text(aes(label = scales::percent(perc, accuracy = 0.1)),
-            vjust = 2, color = "#FFFFFF", fontface = "bold", size = 7) +
-  #  scale_size_manual(values = 3) +
-  #  theme(legend.position = "none") +
-  labs(
-    title = "Violent Gun Crime by Premise",
-    subtitle = paste("For the month of", month(last30, label = TRUE, abbr = FALSE), year(last30)),
-    x = "",
-    y = "",
-    color = 'VARIABLE'
-  ) +
-  theme_cpal(base_size = 28) +
-  theme(axis.text.x=element_text(angle=30, hjust=0.7, vjust = 0.7),
-        legend.position = "none")
-
-## Incidents Within Multi-Family Residences {-}
-
-#Table or bar chart describing the most common types of incidents within multi-family premises (include parking lots, buildings, etc)
-
-## Incidents Within Single-Family Residences {-}
-
-#Table or bar chart describing the most common types of incidents within single-family premises (include occupied, unoccupied, etc)
-
-## Incidents Within Commercial Businesses {-}
-
-#Table or bar chart describing the most common types of incidents within commercial premises (include parking lots, tabc location, occupied/vacant, etc)
-
-
-```
-
-# Incident Victims
-
-## Incidents by Race of Victim {-}
-
-```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
-plot.demo <- as_tibble(cbind(victim_race = c("American Indian or Alaska Native", "Asian","Black", "Hispanic or Latino", "White"),
-                             type = c("City", "City", "City", "City", "City"),
-                             per = c(0.014, 0.0336, 0.2395, 0.4180, 0.2897))) %>%
-  mutate(per = as.double(per))
-
-plot.vgc <- dpdMini %>%
-  st_drop_geometry(.) %>%
-  drop_na(victim_race) %>%
-  group_by(victim_race) %>%
-  summarize(victim_count = n()) %>%
-  mutate(type = "Incident Victims",
-         per = victim_count/sum(victim_count)) %>% #EDIT FOR OTHER GEOGRAPHIES
-  filter(victim_race != "Unknown",
-         victim_race != "NH",
-         victim_race != "Native Hawaiian/Pacific Islander",
-         #victim_race != "American Indian or Alaska Native",
-         victim_race != "Middle Eastern",
-         victim_race != "")
-
-plot.race <- full_join(plot.demo, plot.vgc) %>%
-  mutate(type = as.factor(type)) %>%
-  filter(per != 0)
-
-plot.race %>%
-  ggplot(
-    aes(
-      x = victim_race,
-      y = per,
-      fill = type
-    )
-  ) +
-  geom_bar(size=1, alpha = 1, stat = 'identity', position = 'dodge') +
-  scale_y_continuous(labels = scales::percent, limits = c(0,0.6)) +
-  scale_fill_manual(values = cpal_palette(n = 2, "cpal_two")) +
-  theme_cpal(base_size = 28) +
-  theme(legend.position = "bottom",
-        legend.title=element_blank()) +
-  labs(
-    title = "Incident Victims by selected incident types",
-    subtitle = "In comparison to city demographics (%).",
-    x = "",
-    y = "",
-    color = ""
-  )
-
-```
-
-# Incident Arrests 
-
-## Clearance Rate {-}
-
-**Currently Under Construction**
-
-## Incidents by arrests {-}
-
-**Currently Under Construction**
-
-# Division
-
-## Select Group A Incidents by Division {-}
-
-```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=12,fig.height=8}
-incident_nibrs_div <- dpdIncidents %>%
-  mutate(division = str_to_title(division)) %>%
-  st_drop_geometry(.) %>%
-  group_by(Year, Month, division, crime) %>%
-  summarize(count = n())
-
-incident_vgc_div <- dpdIncidents %>%
-  mutate(division = str_to_title(division)) %>%
-  filter(vgc_flag == 1) %>%
-  mutate(crime = "VIOLENT GUN CRIME") %>%
-  st_drop_geometry(.) %>%
-  group_by(Year, Month, division, crime) %>%
-  summarize(count = n())
-
-incident_table_div <- full_join(incident_nibrs_div, incident_vgc_div) %>%
-  filter(Year > 2016) %>%
-  mutate(crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
-                              ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
-                                     ifelse(crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
-                                            ifelse(crime == "ROBBERY-BUSINESS", "Robbery (Business)",
-                                                   ifelse(crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
-                                                          ifelse(crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
-                                                                 ifelse(crime == "BURGLARY-BUSINESS", "Burglary (Business)",
-                                                                        "ERROR"
-                                                                 ))))))))
-
-report_table_div <- incident_table_div %>%
-  filter(Month == recent_month) %>%
-  ungroup(.) %>%
-  select(-Month) %>%
-  pivot_wider(names_from = Year,
-              names_prefix = "dpd_",
-              values_from = count) %>%
-  mutate(dpd_2022 = ifelse(is.na(dpd_2022), 0, dpd_2022),
-         dpd_2021 = ifelse(is.na(dpd_2021), 0, dpd_2021), 
-         dpd_2020 = ifelse(is.na(dpd_2020), 0, dpd_2020),
-         dpd_2019 = ifelse(is.na(dpd_2019), 0, dpd_2019),
-         Year2Year = round((dpd_2022-dpd_2021)/dpd_2021, digits = 3),
-         Avg3Year = round((dpd_2020+dpd_2021+dpd_2022)/3, digits = 3),
-         Diff3Year = round((dpd_2022-Avg3Year)/Avg3Year, digits = 3),
-         crime = factor(crime, levels = c("MURDER & NONNEGLIGENT MANSLAUGHTER", "VIOLENT GUN CRIME", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS")),
-         crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
-                              ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
-                                     ifelse(crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
-                                            ifelse(crime == "ROBBERY-BUSINESS", "Robbery (Business)",
-                                                   ifelse(crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
-                                                          ifelse(crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
-                                                                 ifelse(crime == "BURGLARY-BUSINESS", "Burglary (Business)",
-                                                                        "ERROR"
-                                                                 ))))))),
-         crime_order = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", 1,
-                              ifelse(crime == "VIOLENT GUN CRIME", 2,
-                                     ifelse(crime == "AGG ASSAULT - NFV", 3,
-                                            ifelse(crime == "ROBBERY-BUSINESS", 4,
-                                                   ifelse(crime == "ROBBERY-INDIVIDUAL", 5,
-                                                          ifelse(crime == "BURGLARY-RESIDENCE", 6,
-                                                                 ifelse(crime == "BURGLARY-BUSINESS", 7,
-                                                                        "ERROR"
-                                                                 ))))))))%>%
-  filter(crime_order != "ERROR") %>%
-  select(-(dpd_2017:dpd_2020), -crime) %>%
-  mutate(Year2Year = ifelse(Year2Year == "NaN", NA, Year2Year)) %>%
-  filter(!is.na(Year2Year)) %>%
-  relocate(division, crime_order, crime_title, dpd_2021, dpd_2022, Year2Year, Avg3Year, Diff3Year)
-
-#####
-tbl_incidents_div <- reactable(report_table_div,
-                               compact = TRUE,
-                               class = "cpal-tbl",
-                               groupBy = "division",
-                               defaultSorted = c("crime_order"),
-                               columns = list(
-                                 division = colDef(
-                                   name = "Division"),
-                                 crime_order = colDef(
-                                   name = "Order",
-                                   show = FALSE),
-                                 crime_title = colDef(
-                                   name = "NIBRS"),
-                                 dpd_2021 = colDef(
-                                   name = "2021",
-                                   na = "-"),
-                                 dpd_2022 = colDef(
-                                   name = "2022",
-                                   na = "-"),
-                                 Year2Year = colDef(
-                                   name = "One Year",
-                                   na = "-",
-                                   cell = function(value) {
-                                     label <- paste0(format(value*100, nsmall = 1), "%")
-                                     bar_chart_pos_neg(label, value)
-                                   },
-                                   align = "center"
-                                 ),
-                                 Avg3Year = colDef(
-                                   name = "Three Year",
-                                   na = "-"),
-                                 Diff3Year = colDef(
-                                   name = "Three Years",
-                                   na = "-",
-                                   cell = function(value) {
-                                     label <- paste0(format(value*100, nsmall = 1), "%")
-                                     bar_chart_pos_neg(label, value)
-                                   },
-                                   align = "center"
-                                 )
-                               ),
-                               columnGroups = list(
-                                 colGroup(name = paste(month(last30, label = TRUE, abbr = FALSE), "Incidents"), columns = c("dpd_2021", "dpd_2022")),
-                                 colGroup(name = "Percent Change", columns = c("Year2Year", "Diff3Year")),
-                                 colGroup(name = "Average", columns = c("Avg3Year"))
-                               )
-)
-
-div(class = "cpal-table",
-    div(class = "cpal-header",
-        h2(class = "cpal-title", paste("Selected Group A Incidents for", month(last30, label = TRUE, abbr = FALSE), year(last30))),
-        "Incidents compared to averages of incident data since 2019"
-    ),
-    tbl_incidents_div
-)
-```
-
-# Appendix
-Using data from the Dallas Open Data portal this report is intended to summarize police incidents in the City of Dallas on a monthly basis.
-
-Incident records from the Dallas Open Data portal currently exclude certain incident types (such as incidents involving juveniles) and may be subject to change over time.
-
-In order to keep this report concise only a select number of incidents classified as "Group A" will be included.
-
-```{r, Incident Defitions, echo = FALSE, message=FALSE, warning=FALSE, fig.width=12,fig.height=8}
-order <- c(1, 2, 3, 4, 5, 6, 7)
-
-nibrs <- c("Murder & Non-negligent Manslaughter", 
-           "Violent Gun Crime", 
-           "Aggravated Assault (NFV)", 
-           "Robbery (Individual)", 
-           "Robbery (Business)", 
-           "Burglary (Residence)", 
-           "Burglary (Business)") 
-
-definition <- c("The willful (non-negligent) killing of one human being by another.", 
-                "A violent Group A that occurs with the use of a firearm. Includes aggravated assault, murder and non-negligent manslaughter, robbery, and burglary,",
-                "An unlawful attack by one person upon another for the purpose of inflicting severe or aggravated bodily injury.",
-                "The taking or attempt to take anything of value from an individual by force, threat of force or violence.",
-                "The taking or attempt to take anything of value from an business by force, threat of force or violence.",
-                "The unlawful entry of a residence to commit a felony or a theft.",
-                "The unlawful entry of a business to commit a felony or a theft.")
-
-incident_def <- data.frame(order, nibrs, definition)
-
-tbl_incidents <- reactable(incident_def,
-          compact = TRUE,
-          class = "cpal-tbl",
-          defaultSorted = c("order"),
-          columns = list(
-            order = colDef(
-              name = "Order",
-              show = FALSE),
-            nibrs = colDef(
-              name = "NIBRS Incident"),
-            definition = colDef(
-              name = "Definition")
-            ))
-
-div(class = "cpal-table",
-  div(class = "cpal-header",
-    h2(class = "cpal-title", "Incidents Included in Report")),
-  tbl_incidents
-)
-```
+The reported U.S. violent crime rate includes murder, rape and sexual assault, robbery, and assault
