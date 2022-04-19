@@ -22,8 +22,8 @@ library(arcgisbinding)
 library(reactable)
 library(CPALtools)
 
-datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
-#datalib <- "E:/CPAL Dropbox/" # Michael Desktop
+#datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
+datalib <- "E:/CPAL Dropbox/" # Michael Desktop
 
 #### Defining vgc and firearms #####
 firearm <- c("Handgun", "Rifle","Firearm (Type Not Stated)", "Assault Weapon", "Unknown Type Gun", "Other/Unknown Gun", "Shotgun", "Other Gun", "Other Firearm")
@@ -266,7 +266,7 @@ This is **`r ifelse(incident_01$count > incident_02$count, "an increase", "a dec
 
 There were **`r nrow(filter(dpdMini, vgc_flag == 1 & tot_victims >= 4))`** incidents with 4 or more victims across the city.
 
-**`r paste0(round(max(Division_VGC$perc)*100, digit = 1), "%")`** of all violent gun crimes in October occurred in **`r maxDivision$division`** Division 
+**`r paste0(round(max(Division_VGC$perc)*100, digit = 1), "%")`** of all violent gun crimes in **`r paste(month_01, year_01)`** occurred in **`r maxDivision$division`** Division 
 
 **`r paste0(round(vgc_hr$count/incident_01$count*100, digit = 1), "%", " (", vgc_hr$count, ")")`** of Violent Gun Crimes occurred within a cell identified as "High Risk" by our most recent Risk Terrain Modeling Analysis.
 
