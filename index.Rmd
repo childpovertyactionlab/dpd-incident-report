@@ -30,9 +30,10 @@ firearm <- c("Handgun", "Rifle","Firearm (Type Not Stated)", "Assault Weapon", "
 vgc_type <- c("AGG ASSAULT - NFV", "MURDER & NONNEGLIGENT MANSLAUGHTER", "NEGLIGENT MANSLAUGHTER")
 
 #### Importing Dallas Open Data portals and filtering into data frames #####
-dpdIncidents <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Incidents by Type/GroupA.csv")) %>%
-  st_as_sf(coords = c(x = "x_coordinate", y = "y_coordinate"),
-                                   crs = "ESRI:102738") %>%
+dpdIncidents <- st_read(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/GIS/DPD_Incidents.gpkg"), layer = "Group_A") %>%
+#dpdIncidents <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Incidents by Type/GroupA.csv")) #%>%
+#  st_as_sf(coords = c(x = "x_coordinate", y = "y_coordinate"),
+#                                   crs = "ESRI:102738") %>%
   mutate(Date = as.Date(Date),
          Time = lubridate::hm(Time),
          Year = year(Date),
@@ -255,12 +256,39 @@ vgc_hr <- dpdMini %>%
   filter(HighRisk == TRUE)
 ```
 
+```{r, Arrests and Charges, include = FALSE}
+arrests <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Police Incident Records/Dallas Open Data - Police Arrests Raw Data.csv")) %>%
+  mutate(ararrestdate = ymd_hms(ararrestdate)) %>%
+  filter(ararrestdate >= as.Date("2022-04-01 00:00:00") & ararrestdate < as.Date("2022-05-01 00:00:00"))
+
+charges <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Police Incident Records/Dallas Open Data - Police Arrest Charges Raw Data.csv")) %>%
+  mutate(arrestdate = ymd_hms(arrestdate)) %>%
+  filter(arrestdate >= as.Date("2022-04-01 00:00:00") & arrestdate < as.Date("2022-05-01 00:00:00"))
+
+arrestenrich <-dpdMini %>%
+  left_join(., arrests, by = "incidentnum")
+
+arrestvgc <- arrestenrich %>%
+  filter(vgc_flag == 1) %>%
+  mutate(arrest_flag = ifelse(is.na(arrestnumber), 0, 1))
+
+arresttable <- arrestvgc %>%
+  st_drop_geometry(.) %>%
+  group_by(vgc_flag, arrest_flag) %>%
+  summarise(count = n()) %>%
+  mutate(percent = count/sum(count))
+
+arresttot <- arresttable %>%
+  filter(arrest_flag == 1)
+```
 
 ## `r paste(month_01, year_01)`
 
 The violent crime rate for **`r paste(month_01, year_01)`** was **`r round(incident_01$count/(1304379/10000), digits = 3)`** per 10,000 residents.
 
 In the month of **`r paste(month_01, year_01)`** there was a total of **`r incident_01$count`** violent gun crimes across the city. 
+
+Of those **`r incident_01$count`** violent gun crimes there have been  **`r arresttot$count`** arrests thus far. This amounts to an arrest rate of **`r paste0(round(arresttot$percent*100, digits = 1), "%")`**
 
 This is **`r ifelse(incident_01$count > incident_02$count, "an increase", "a decrease")` of `r paste0(round(((incident_01$count-incident_02$count)/incident_02$count)*100, digits = 1), "%")`** from **`r paste(month_02, year_01)`**, and **`r ifelse(incident_01$count > incident_03$count, "an increase", "a decrease")`** of **`r paste0(round(((incident_01$count-incident_03$count)/incident_03$count)*100, digits = 1), "%")`** from **`r paste(month_01, year_02)`**.
 
