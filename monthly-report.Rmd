@@ -53,9 +53,9 @@ report_table <- incident_table %>%
          dpd_2021 = ifelse(is.na(dpd_2021), 0, dpd_2021), 
          dpd_2020 = ifelse(is.na(dpd_2020), 0, dpd_2020),
          dpd_2019 = ifelse(is.na(dpd_2019), 0, dpd_2019),
-         Year2Year = paste0(round((dpd_2022-dpd_2021)/dpd_2021, digits = 3), "%"),
-         Avg3Year = round((dpd_2020+dpd_2021+dpd_2022)/3, digits = 2),
-         Diff3Year = paste0(round(((dpd_2022-Avg3Year)/Avg3Year)*100, digits = 3), "%"),
+         Year2Year = paste0(round((dpd_2022-dpd_2021)/dpd_2021, digits = 1), "%"),
+         Avg3Year = round((dpd_2020+dpd_2021+dpd_2022)/3, digits = 1),
+         Diff3Year = paste0(round(((dpd_2022-Avg3Year)/Avg3Year)*100, digits = 1), "%"),
          crime = factor(crime, levels = c("MURDER & NONNEGLIGENT MANSLAUGHTER", "VIOLENT GUN CRIME", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS")),
          crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
                               ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
@@ -168,7 +168,6 @@ incident_table %>%
 Facet wrap pie charts of incident types grouped by time of day (early morning, morning, afternoon, evening, late night) 
 
 ```{r, Facet Pie Charts, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
-
 dpdMini %>%
   st_drop_geometry(.) %>%
   mutate(ToD = factor(ToD, levels = c("Early Morning", "Morning", "Afternoon", "Evening", "Night"))) %>%
@@ -201,18 +200,18 @@ dpdMini %>%
 ```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
 dpdMini %>%
   st_drop_geometry(.) %>%
-  group_by(premise) %>%
+  group_by(type_location) %>%
   summarize(victim_count = n()) %>%
   arrange(desc(victim_count)) %>%
   mutate(perc = victim_count/sum(victim_count)) %>%
   slice_head(., n = 7) %>%
   ggplot(
     aes(
-      x = premise,
+      x = type_location,
       y = victim_count,
       #      group = crime_category,
       #      color = victim_race,
-      fill = premise,
+      fill = type_location,
     )
   ) +
   geom_bar(size=1, alpha = 1, stat = "identity") +
@@ -250,24 +249,24 @@ dpdMini %>%
 ## Incidents by Race of Victim {-}
 
 ```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
-plot.demo <- as_tibble(cbind(comprace = c("American Indian or Alaska Native", "Asian","Black", "Hispanic or Latino", "White"),
+plot.demo <- as_tibble(cbind(victim_race = c("American Indian or Alaska Native", "Asian","Black", "Hispanic or Latino", "White"),
                              type = c("City", "City", "City", "City", "City"),
                              per = c(0.014, 0.0336, 0.2395, 0.4180, 0.2897))) %>%
   mutate(per = as.double(per))
 
 plot.vgc <- dpdMini %>%
   st_drop_geometry(.) %>%
-  drop_na(comprace) %>%
-  group_by(comprace) %>%
+  drop_na(victim_race) %>%
+  group_by(victim_race) %>%
   summarize(victim_count = n()) %>%
   mutate(type = "Incident Victims",
          per = victim_count/sum(victim_count)) %>% #EDIT FOR OTHER GEOGRAPHIES
-  filter(comprace != "Unknown",
-         comprace != "NH",
-         comprace != "Native Hawaiian/Pacific Islander",
+  filter(victim_race != "Unknown",
+         victim_race != "NH",
+         victim_race != "Native Hawaiian/Pacific Islander",
          #comprace != "American Indian or Alaska Native",
-         comprace != "Middle Eastern",
-         comprace != "")
+         victim_race != "Middle Eastern",
+         victim_race != "")
 
 plot.race <- full_join(plot.demo, plot.vgc) %>%
   mutate(type = as.factor(type)) %>%
@@ -276,7 +275,7 @@ plot.race <- full_join(plot.demo, plot.vgc) %>%
 plot.race %>%
   ggplot(
     aes(
-      x = comprace,
+      x = victim_race,
       y = per,
       fill = type
     )
@@ -345,9 +344,9 @@ report_table_div <- incident_table_div %>%
          dpd_2021 = ifelse(is.na(dpd_2021), 0, dpd_2021), 
          dpd_2020 = ifelse(is.na(dpd_2020), 0, dpd_2020),
          dpd_2019 = ifelse(is.na(dpd_2019), 0, dpd_2019),
-         Year2Year = round((dpd_2022-dpd_2021)/dpd_2021, digits = 3),
-         Avg3Year = round((dpd_2020+dpd_2021+dpd_2022)/3, digits = 3),
-         Diff3Year = round((dpd_2022-Avg3Year)/Avg3Year, digits = 3),
+         Year2Year = round((dpd_2022-dpd_2021)/dpd_2021, digits = 1),
+         Avg3Year = round((dpd_2020+dpd_2021+dpd_2022)/3, digits = 1),
+         Diff3Year = round((dpd_2022-Avg3Year)/Avg3Year, digits = 1),
          crime = factor(crime, levels = c("MURDER & NONNEGLIGENT MANSLAUGHTER", "VIOLENT GUN CRIME", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS")),
          crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
                               ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",

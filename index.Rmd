@@ -131,7 +131,7 @@ incident_comp <- dpdIncidents %>%
     filter(crime %in% c("AGG ASSAULT - NFV", "MURDER & NONNEGLIGENT MANSLAUGHTER") & Firearm == 1) %>%
   filter((Year == 2022 & Month == month(last30)) |
            (Year == 2021 & Month == month(last30)) |
-           (Year == 2021 & Month == month(12))) %>%
+           (Year == 2021 & Month == month(4))) %>%
   st_drop_geometry(.) %>%
   group_by(Year, Month) %>%
   summarise(count = n())
@@ -140,7 +140,7 @@ incident_01 <- incident_comp %>%
   filter(Year == 2022 & Month == month(last30))
 
 incident_02 <- incident_comp %>%
-  filter(Year == 2021 & Month == month(12)) #month(last30)-month(1)
+  filter(Year == 2021 & Month == month(4)) #month(last30)-month(1)
 
 incident_03 <- incident_comp %>%
   filter(Year == 2021 & Month == month(last30))
@@ -179,49 +179,49 @@ SC_Mark <- dpdMini %>%
   .[SC_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(servnumid, HighRisk)
+  select(service_number_id, HighRisk)
 
 SE_Mark <- dpdMini %>%
   filter(division == "Southeast") %>%
   .[SE_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(servnumid, HighRisk)
+  select(service_number_id, HighRisk)
 
 NE_Mark <- dpdMini %>%
   filter(division == "Northeast") %>%
   .[NE_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(servnumid, HighRisk)
+  select(service_number_id, HighRisk)
 
 NW_Mark <- dpdMini %>%
   filter(division == "Northwest") %>%
   .[NW_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(servnumid, HighRisk)
+  select(service_number_id, HighRisk)
 
 C_Mark <- dpdMini %>%
   filter(division == "Central") %>%
   .[C_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(servnumid, HighRisk)
+  select(service_number_id, HighRisk)
 
 SW_Mark <- dpdMini %>%
   filter(division == "Southwest") %>%
   .[SW_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(servnumid, HighRisk)
+  select(service_number_id, HighRisk)
 
 NC_Mark <- dpdMini %>%
   filter(division == "North Central") %>%
   .[NC_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
-  select(servnumid, HighRisk)
+  select(service_number_id, HighRisk)
 
 dpdMini <- bind_rows(SC_Mark, SE_Mark, NE_Mark, NW_Mark, C_Mark, SW_Mark, NC_Mark) %>%
   left_join(dpdMini, .)
@@ -258,15 +258,17 @@ vgc_hr <- dpdMini %>%
 
 ```{r, Arrests and Charges, include = FALSE}
 arrests <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Police Incident Records/Dallas Open Data - Police Arrests Raw Data.csv")) %>%
-  mutate(ararrestdate = ymd_hms(ararrestdate)) %>%
-  filter(ararrestdate >= as.Date("2022-04-01 00:00:00") & ararrestdate < as.Date("2022-05-01 00:00:00"))
+  mutate(ararrestdate = ymd_hms(ararrestdate),
+         incident_number_w_year = incidentnum) %>%
+  filter(ararrestdate >= as.Date("2022-05-01 00:00:00") & ararrestdate < as.Date("2022-06-01 00:00:00"))
 
 charges <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Police Incident Records/Dallas Open Data - Police Arrest Charges Raw Data.csv")) %>%
-  mutate(arrestdate = ymd_hms(arrestdate)) %>%
-  filter(arrestdate >= as.Date("2022-04-01 00:00:00") & arrestdate < as.Date("2022-05-01 00:00:00"))
+  mutate(arrestdate = ymd_hms(arrestdate),
+         incident_number_w_year = incidentnum) %>%
+  filter(arrestdate >= as.Date("2022-05-01 00:00:00") & arrestdate < as.Date("2022-06-01 00:00:00"))
 
 arrestenrich <-dpdMini %>%
-  left_join(., arrests, by = "incidentnum")
+  left_join(., arrests, by = "incident_number_w_year")
 
 arrestvgc <- arrestenrich %>%
   filter(vgc_flag == 1) %>%
