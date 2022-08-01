@@ -209,18 +209,18 @@ dpdMini %>%
 ```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
 dpdMini %>%
   st_drop_geometry(.) %>%
-  group_by(type_location) %>%
+  group_by(premise) %>%
   summarize(victim_count = n()) %>%
   arrange(desc(victim_count)) %>%
   mutate(perc = victim_count/sum(victim_count)) %>%
   slice_head(., n = 7) %>%
   ggplot(
     aes(
-      x = type_location,
+      x = premise,
       y = victim_count,
       #      group = crime_category,
-      #      color = victim_race,
-      fill = type_location,
+      #      color = comprace,
+      fill = premise,
     )
   ) +
   geom_bar(size=1, alpha = 1, stat = "identity") +
@@ -258,24 +258,24 @@ dpdMini %>%
 ## Incidents by Race of Victim {-}
 
 ```{r, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
-plot.demo <- as_tibble(cbind(victim_race = c("American Indian or Alaska Native", "Asian","Black", "Hispanic or Latino", "White"),
+plot.demo <- as_tibble(cbind(comprace = c("American Indian or Alaska Native", "Asian","Black", "Hispanic or Latino", "White"),
                              type = c("City", "City", "City", "City", "City"),
                              per = c(0.014, 0.0336, 0.2395, 0.4180, 0.2897))) %>%
   mutate(per = as.double(per))
 
 plot.vgc <- dpdMini %>%
   st_drop_geometry(.) %>%
-  drop_na(victim_race) %>%
-  group_by(victim_race) %>%
+  drop_na(comprace) %>%
+  group_by(comprace) %>%
   summarize(victim_count = n()) %>%
   mutate(type = "Incident Victims",
          per = victim_count/sum(victim_count)) %>% #EDIT FOR OTHER GEOGRAPHIES
-  filter(victim_race != "Unknown",
-         victim_race != "NH",
-         victim_race != "Native Hawaiian/Pacific Islander",
+  filter(comprace != "Unknown",
+         comprace != "NH",
+         comprace != "Native Hawaiian/Pacific Islander",
          #comprace != "American Indian or Alaska Native",
-         victim_race != "Middle Eastern",
-         victim_race != "")
+         comprace != "Middle Eastern",
+         comprace != "")
 
 plot.race <- full_join(plot.demo, plot.vgc) %>%
   mutate(type = as.factor(type)) %>%
@@ -284,7 +284,7 @@ plot.race <- full_join(plot.demo, plot.vgc) %>%
 plot.race %>%
   ggplot(
     aes(
-      x = victim_race,
+      x = comprace,
       y = per,
       fill = type
     )
