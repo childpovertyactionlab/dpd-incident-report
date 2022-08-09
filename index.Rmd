@@ -5,7 +5,7 @@ output:
     toc:false:
       theme: theme.css
 favicon: "images/favicon.ico"
-github-repo: childpovertyactionlab/DPD-incident-reports
+github-repo: childpovertyactionlab/dpd-incident-report
 ---
 
 ```{r Set-Up Block, include = FALSE}
@@ -13,27 +13,24 @@ github-repo: childpovertyactionlab/DPD-incident-reports
 library(tidyverse)
 library(sf)
 library(leaflet)
-library(mapboxapi)
+#library(mapboxapi)
 library(lubridate)
 library(rio)
-library(tidycensus)
+#library(tidycensus)
 library(htmltools)
-library(arcgisbinding)
+#library(arcgisbinding)
 library(reactable)
 library(CPALtools)
 
-#datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
-datalib <- "E:/CPAL Dropbox/" # Michael Desktop
+datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
+#datalib <- "E:/CPAL Dropbox/" # Michael Desktop
 
 #### Defining vgc and firearms #####
 firearm <- c("Handgun", "Rifle","Firearm (Type Not Stated)", "Assault Weapon", "Unknown Type Gun", "Other/Unknown Gun", "Shotgun", "Other Gun", "Other Firearm")
 vgc_type <- c("AGG ASSAULT - NFV", "MURDER & NONNEGLIGENT MANSLAUGHTER", "NEGLIGENT MANSLAUGHTER")
 
 #### Importing Dallas Open Data portals and filtering into data frames #####
-dpdIncidents <- st_read("E:/CPAL Dropbox/Data Library/City of Dallas/04_Public Safety/Dallas Police/Data/Incidents/Processed Data/ODP - Dallas Police Incidents.gpkg", layer = "Group A") %>%
-#dpdIncidents <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Incidents by Type/GroupA.csv")) #%>%
-#  st_as_sf(coords = c(x = "x_coordinate", y = "y_coordinate"),
-#                                   crs = "ESRI:102738") %>%
+dpdIncidents <- st_read(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Data/Incidents/Processed Data/ODP - Dallas Police Incidents.gpkg"), layer = "Group A") %>%
   mutate(Date = as.Date(Date),
          Time = lubridate::hm(Time),
          Year = year(Date),
@@ -65,49 +62,38 @@ dpdIncidents <- st_read("E:/CPAL Dropbox/Data Library/City of Dallas/04_Public S
                                                                  ifelse(crime == "BURGLARY-BUSINESS", "Burglary (Business)",
                                                                         "ERROR"
                               )))))))) %>%
-  st_transform(crs = 4269)
+  st_transform(crs = 4269) %>%
+  select(incidentnum:premise, incident_address:time1, reporteddate, involvement:ro1name, status, mo, offensecode:nibrs_type, zip_code:geocoded_column.longitude, taag:compsex, weaponused, tot_victims:crime_title) %>%
+  filter(crime %in% c("MURDER & NONNEGLIGENT MANSLAUGHTER", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS"))
 
 #unique(dpdIncidents$crime)
 
-currentmonth <- as.Date(paste0(year(today()), "-", month(today()), "-01"))
-
+# generate dataframes based on various time cuts needed for visuals
+currentmonth <- floor_date(today(), unit = "month")
 last30 <- currentmonth-months(1)
+lastweek <- as.Date(max(dpdIncidents$date1))-days(7)
 
 vgc5year <- dpdIncidents %>%
   filter(vgc_flag == 1,
-         Date >= as.Date("2016-01-01"))
+         Date >= currentmonth - years(5))
 
 vgc12months <- dpdIncidents %>%
   filter(vgc_flag == 1,
-         Date >= as.Date("2021-01-01"))
+         Date >= currentmonth - years(1))
 
 vgc30days <- dpdIncidents %>%
   filter(vgc_flag == 1,
          Date >= last30 & Date < currentmonth)
 
-AggAs <- dpdIncidents %>%
-  filter(crime == "AGG ASSAULT - NFV",
-         Date >= last30 & Date < currentmonth)
+vgc7days <- dpdIncidents %>%
+  filter(vgc_flag == 1,
+         Date >= lastweek)
 
-RobBus <- dpdIncidents %>%
-  filter(crime == "ROBBERY-BUSINESS",
-         Date >= last30 & Date < currentmonth)
-
-RobInd <- dpdIncidents %>%
-  filter(crime == "ROBBERY-INDIVIDUAL",
-         Date >= last30 & Date < currentmonth)
-
-BurRes <- dpdIncidents %>%
-  filter(crime == "BURGLARY-RESIDENCE",
-         Date >= last30 & Date < currentmonth)
-
-BurBus <- dpdIncidents %>%
-  filter(crime == "BURGLARY-BUSINESS",
-         Date >= last30 & Date < currentmonth)
-
-dpdMini <- dpdIncidents %>%
-  filter(crime %in% c("AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS", "MURDER & NONNEGLIGENT MANSLAUGHTER")) %>%
+dpdMonth <- dpdIncidents %>%
   filter(Date >= last30 & Date < currentmonth)
+
+dpdWeek <- dpdIncidents %>%
+  filter(Date >= lastweek)
 
 #### Import tenth mile grid of the City of Dallas #####
 grid_incidents <- st_read("data/dallas_tenthmilegrid.geojson") %>%
@@ -128,7 +114,7 @@ dpd_divisions <- st_read("data/dpd_divisions.geojson") %>%
   st_transform(crs = 4269)
 
 incident_comp <- dpdIncidents %>%
-    filter(crime %in% c("AGG ASSAULT - NFV", "MURDER & NONNEGLIGENT MANSLAUGHTER") & Firearm == 1) %>%
+  filter(crime %in% c("AGG ASSAULT - NFV", "MURDER & NONNEGLIGENT MANSLAUGHTER") & Firearm == 1) %>%
   filter((Year == 2022 & Month == month(last30)) |
            (Year == 2021 & Month == month(last30)) |
            (Year == 2021 & Month == month(4))) %>%

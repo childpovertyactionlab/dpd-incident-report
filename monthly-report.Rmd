@@ -5,7 +5,7 @@ output:
     toc:false:
       theme: theme.css
 favicon: "images/favicon.ico"
-github-repo: childpovertyactionlab/DPD-incident-reports
+github-repo: childpovertyactionlab/dpd-incident-report
 ---
 
 ## Select Group A Incidents Overview {-}

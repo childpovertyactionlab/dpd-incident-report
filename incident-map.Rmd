@@ -5,7 +5,7 @@ output:
     toc:false:
       theme: theme.css
 favicon: "images/favicon.ico"
-github-repo: childpovertyactionlab/DPD-incident-reports
+github-repo: childpovertyactionlab/dpd-incident-report
 ---
 
 ## Violent Gun Crimes in `r paste(month_01, year_01)`
