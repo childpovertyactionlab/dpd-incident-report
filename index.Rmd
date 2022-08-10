@@ -22,8 +22,8 @@ library(htmltools)
 library(reactable)
 library(CPALtools)
 
-datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
-#datalib <- "E:/CPAL Dropbox/" # Michael Desktop
+#datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
+datalib <- "E:/CPAL Dropbox/" # Michael Desktop
 
 #### Defining vgc and firearms #####
 firearm <- c("Handgun", "Rifle","Firearm (Type Not Stated)", "Assault Weapon", "Unknown Type Gun", "Other/Unknown Gun", "Shotgun", "Other Gun", "Other Firearm")
@@ -72,7 +72,10 @@ dpdIncidents <- st_read(paste0(datalib, "Data Library/City of Dallas/04_Public S
 currentmonth <- floor_date(today(), unit = "month")
 last30 <- currentmonth-months(1)
 lastweek <- as.Date(max(dpdIncidents$date1))-days(7)
+twoweeks <- as.Date(max(dpdIncidents$date1))-days(14)
 
+# generate vgc data frames
+# what need is there for these?
 vgc5year <- dpdIncidents %>%
   filter(vgc_flag == 1,
          Date >= currentmonth - years(5))
@@ -101,7 +104,8 @@ grid_incidents <- st_read("data/dallas_tenthmilegrid.geojson") %>%
   mutate(vgc_5year = lengths(st_intersects(., vgc5year)),
          vgc_12months = lengths(st_intersects(., vgc12months)),
          vgc_5yearAvg = vgc_5year/5,
-         vgc_perch = (vgc_12months-vgc_5yearAvg)/vgc_5yearAvg)
+         vgc_perch = (vgc_12months-vgc_5yearAvg)/vgc_5yearAvg,
+         vgc_perch = ifelse(vgc_perch == "NaN", NA, vgc_perch))
 
 #### Import  Dallas boundaries #####
 DallasBoundary <- st_read("data/dallas_simpleboundary.geojson") %>%
@@ -113,119 +117,142 @@ dpd_beats <- st_read("data/dpd_beats.geojson") %>%
 dpd_divisions <- st_read("data/dpd_divisions.geojson") %>%
   st_transform(crs = 4269)
 
-incident_comp <- dpdIncidents %>%
-  filter(crime %in% c("AGG ASSAULT - NFV", "MURDER & NONNEGLIGENT MANSLAUGHTER") & Firearm == 1) %>%
-  filter((Year == 2022 & Month == month(last30)) |
-           (Year == 2021 & Month == month(last30)) |
-           (Year == 2021 & Month == month(4))) %>%
+thisyear <- year(last30)
+lastyear <- year(last30-years(1))
+thismonth <- month(last30)
+lastmonth <- month(last30 - month(1))
+
+month_comp <- dpdIncidents %>%
+  filter(crime %in% vgc_type & Firearm == 1) %>%
+  filter((Year == thisyear & Month == thismonth) | #most recent complete month
+           (Year == lastyear & Month == thismonth) | #year prior but same month
+           (Year == thisyear & Month == lastmonth)) %>% #last month
   st_drop_geometry(.) %>%
   group_by(Year, Month) %>%
   summarise(count = n())
 
-incident_01 <- incident_comp %>%
-  filter(Year == 2022 & Month == month(last30))
+month_01 <- incident_comp %>%
+  filter(Year == thisyear & Month == month(last30))
 
-incident_02 <- incident_comp %>%
-  filter(Year == 2021 & Month == month(4)) #month(last30)-month(1)
+month_02 <- incident_comp %>%
+  filter(Year == thisyear & Month == lastmonth)
 
-incident_03 <- incident_comp %>%
-  filter(Year == 2021 & Month == month(last30))
+month_03 <- incident_comp %>%
+  filter(Year == lastyear & Month == thismonth)
 
-incident_04 <- dpdIncidents %>%
-    filter(crime %in% c("AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS", "MURDER & NONNEGLIGENT MANSLAUGHTER")) %>%
-  filter((Year == 2022 & Month == month(last30))) %>%
+month_04 <- dpdIncidents %>%
+  filter((Year == thisyear & Month == thismonth)) %>%
   st_drop_geometry(.) %>%
   group_by(Year, Month) %>%
   summarise(count = n())
+
+week_comp <- dpdIncidents %>%
+  filter(crime %in% vgc_type & Firearm == 1) %>%
+  mutate(weekFlag = ifelse(Date >= lastweek, "This Week",
+                           ifelse(Date >= twoweeks & Date < lastweek, "Last Week",
+                                  "IGNORE"))) %>%
+  filter(weekFlag != "IGNORE") %>%
+  st_drop_geometry(.) %>%
+  group_by(weekFlag) %>%
+  summarise(count = n())
+
+week_01 <- week_comp %>%
+  filter(weekFlag == "This Week")
+
+week_02 <- week_comp %>%
+  filter(weekFlag == "Last Week")
+
+week_03 <- dpdIncidents %>%
+  mutate(weekFlag = ifelse(Date >= lastweek, "This Week",
+                           ifelse(Date >= twoweeks & Date < lastweek, "Last Week",
+                                  "IGNORE"))) %>%
+  filter(weekFlag == "This Week") %>%
+  st_drop_geometry(.) %>%
+  group_by(weekFlag) %>%
+  summarise(count = n())
+
 ```
 
 ```{r, High Risk Cells, include = FALSE}
 #### Import High Risk RTM Cells from most recent models
-hr_directory <- paste0(datalib, "Safe Surroundings/04_Projects/RTM 2021/2021_Q3_RTM/Data/RTM_Q32021_Outputs.gpkg")
+#st_layers(paste0(datalib, "Safe Surroundings/04_Projects/RTM 2022/2022_Q1_RTM/Data/2022_Q1_RTM_Outputs.gpkg"))
+hr_directory <- paste0(datalib, "Safe Surroundings/04_Projects/RTM 2022/2022_Q1_RTM/Data/2022_Q1_RTM_Outputs.gpkg")
 
-SE_HR <- st_read(hr_directory, layer = "SE_HighRisk") %>%
-  st_transform(crs = 4269)
-SC_HR <- st_read(hr_directory, layer = "SC_HighRisk") %>%
-  st_transform(crs = 4269)
-C_HR <- st_read(hr_directory, layer = "C_HighRisk") %>%
-  st_transform(crs = 4269)
-NC_HR <- st_read(hr_directory, layer = "NC_HighRisk") %>%
-  st_transform(crs = 4269)
-NE_HR <- st_read(hr_directory, layer = "NE_HighRisk") %>%
-  st_transform(crs = 4269)
-NW_HR <- st_read(hr_directory, layer = "NW_HighRisk") %>%
-  st_transform(crs = 4269)
-SW_HR <- st_read(hr_directory, layer = "SW_HighRisk") %>%
-  st_transform(crs = 4269)
+SE_HR <- st_read(hr_directory, layer = "SE RTM RRSz") %>%
+  st_transform(crs = 4269) %>%
+  filter(highest == 1)
+SC_HR <- st_read(hr_directory, layer = "SC RTM RRSz") %>%
+  st_transform(crs = 4269) %>%
+  filter(highest == 1)
+C_HR <- st_read(hr_directory, layer = "C RTM RRSz") %>%
+  st_transform(crs = 4269) %>%
+  filter(highest == 1)
+NC_HR <- st_read(hr_directory, layer = "NC RTM RRSz") %>%
+  st_transform(crs = 4269) %>%
+  filter(highest == 1)
+NE_HR <- st_read(hr_directory, layer = "NE RTM RRSz") %>%
+  st_transform(crs = 4269) %>%
+  filter(highest == 1)
+NW_HR <- st_read(hr_directory, layer = "NW RTM RRSz") %>%
+  st_transform(crs = 4269) %>%
+  filter(highest == 1)
+SW_HR <- st_read(hr_directory, layer = "SW RTM RRSz") %>%
+  st_transform(crs = 4269) %>%
+  filter(highest == 1)
 
-unique(dpdMini$division)
-
-SC_Mark <- dpdMini %>%
+SC_Mark <- vgc30days %>%
   filter(division == "South Central") %>%
   .[SC_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
   select(servnumid, HighRisk)
 
-SE_Mark <- dpdMini %>%
+SE_Mark <- vgc30days %>%
   filter(division == "Southeast") %>%
   .[SE_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
   select(servnumid, HighRisk)
 
-NE_Mark <- dpdMini %>%
+NE_Mark <- vgc30days %>%
   filter(division == "Northeast") %>%
   .[NE_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
   select(servnumid, HighRisk)
 
-NW_Mark <- dpdMini %>%
+NW_Mark <- vgc30days %>%
   filter(division == "Northwest") %>%
   .[NW_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
   select(servnumid, HighRisk)
 
-C_Mark <- dpdMini %>%
+C_Mark <- vgc30days %>%
   filter(division == "Central") %>%
   .[C_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
   select(servnumid, HighRisk)
 
-SW_Mark <- dpdMini %>%
+SW_Mark <- vgc30days %>%
   filter(division == "Southwest") %>%
   .[SW_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
   select(servnumid, HighRisk)
 
-NC_Mark <- dpdMini %>%
+NC_Mark <- vgc30days %>%
   filter(division == "North Central") %>%
   .[NC_HR, ] %>%
   mutate(HighRisk = "TRUE") %>%
   st_drop_geometry(.) %>%
   select(servnumid, HighRisk)
 
-dpdMini <- bind_rows(SC_Mark, SE_Mark, NE_Mark, NW_Mark, C_Mark, SW_Mark, NC_Mark) %>%
-  left_join(dpdMini, .)
+vgc30days <- bind_rows(SC_Mark, SE_Mark, NE_Mark, NW_Mark, C_Mark, SW_Mark, NC_Mark) %>%
+  left_join(vgc30days, .)
 
-rm(SC_Mark)
-rm(SE_Mark)
-rm(SW_Mark)
-rm(C_Mark)
-rm(NC_Mark)
-rm(NE_Mark)
-rm(NW_Mark)
-
-month_01 <- as.character(month(last30, abbr = FALSE, label = TRUE))
-month_02 <- as.character(month(last30 %m-% months(1), abbr = FALSE, label = TRUE))
-year_01 <- as.character(year(last30))
-year_02 <- as.character(year(last30-years(1)))
-
-Division_VGC <- dpdMini %>%
+Division_VGC <- vgc30days %>%
   st_drop_geometry(.) %>%
   filter(vgc_flag == 1) %>%
   group_by(division) %>%
@@ -234,7 +261,7 @@ Division_VGC <- dpdMini %>%
 
 maxDivision <- filter(Division_VGC, perc == max(perc))
 
-vgc_hr <- dpdMini %>%
+vgc_hr <- vgc30days %>%
   st_drop_geometry(.) %>%
   filter(vgc_flag == 1) %>%
   group_by(HighRisk) %>%
@@ -273,18 +300,20 @@ vgc_hr <- dpdMini %>%
 
 ```
 
-## `r paste(month_01, year_01)`
+## `r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`
 
-The violent crime rate for **`r paste(month_01, year_01)`** was **`r round(incident_01$count/(1304379/10000), digits = 3)`** per 10,000 residents.
+The violent crime rate for **`r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`** was **`r round(month_01$count/(1304379/10000), digits = 3)`** per 10,000 residents.
 
-In the month of **`r paste(month_01, year_01)`** there was a total of **`r incident_01$count`** violent gun crimes across the city. 
+In the month of **`r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`** there was a total of **`r month_01$count`** violent gun crimes across the city. 
 
-This is **`r ifelse(incident_01$count > incident_02$count, "an increase", "a decrease")` of `r paste0(round(((incident_01$count-incident_02$count)/incident_02$count)*100, digits = 1), "%")`** from **`r paste(month_02, year_01)`**, and **`r ifelse(incident_01$count > incident_03$count, "an increase", "a decrease")`** of **`r paste0(round(((incident_01$count-incident_03$count)/incident_03$count)*100, digits = 1), "%")`** from **`r paste(month_01, year_02)`**.
+For the week of **`r paste(lastweek)`** there was a total of **`r week_01$count`** violent gun crimes across the city. This is a difference of **`r week_01$count - week_02$count`** from the prior week.
 
-There were **`r nrow(filter(dpdMini, vgc_flag == 1 & tot_victims >= 4))`** incidents with 4 or more victims across the city.
+This is **`r ifelse(month_01$count > month_02$count, "an increase", "a decrease")` of `r paste0(round(((month_01$count-month_02$count)/month_02$count)*100, digits = 1), "%")`** from **`r paste(month(lastmonth, label = TRUE, abbr = FALSE), thisyear)`**, and **`r ifelse(month_01$count > month_03$count, "an increase", "a decrease")`** of **`r paste0(round(((month_01$count-month_03$count)/month_03$count)*100, digits = 1), "%")`** from **`r paste(month(thismonth, label = TRUE, abbr = FALSE), lastyear)`**.
 
-**`r paste0(round(max(Division_VGC$perc)*100, digit = 1), "%")`** of all violent gun crimes in **`r paste(month_01, year_01)`** occurred in **`r maxDivision$division`** Division 
+There were **`r nrow(filter(vgc30days, tot_victims >= 4))`** incidents with 4 or more victims across the city last month and **`r nrow(filter(vgc7days, tot_victims >= 4))`** last week.
 
-**`r paste0(round(vgc_hr$count/incident_01$count*100, digit = 1), "%", " (", vgc_hr$count, ")")`** of Violent Gun Crimes occurred within a cell identified as "High Risk" by our most recent Risk Terrain Modeling Analysis.
+**`r paste0(round(max(Division_VGC$perc)*100, digit = 1), "%")`** of all violent gun crimes in **`r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`** occurred in **`r maxDivision$division`** Division 
+
+**`r paste0(round(vgc_hr$count/month_01$count*100, digit = 1), "%", " (", vgc_hr$count, ")")`** of Violent Gun Crimes occurred within a cell identified as "High Risk" by our most recent Risk Terrain Modeling Analysis.
 
 The reported U.S. violent crime rate includes murder, rape and sexual assault, robbery, and assault

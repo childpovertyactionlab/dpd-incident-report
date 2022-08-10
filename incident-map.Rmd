@@ -8,7 +8,7 @@ favicon: "images/favicon.ico"
 github-repo: childpovertyactionlab/dpd-incident-report
 ---
 
-## Violent Gun Crimes in `r paste(month_01, year_01)`
+## Violent Gun Crimes in `r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`
 
 ```{r, echo = FALSE, message=FALSE, warning=FALSE, layout="l-page", fig.height=8}
 leaflet() %>%
