@@ -131,13 +131,13 @@ month_comp <- dpdIncidents %>%
   group_by(Year, Month) %>%
   summarise(count = n())
 
-month_01 <- incident_comp %>%
+month_01 <- month_comp %>%
   filter(Year == thisyear & Month == month(last30))
 
-month_02 <- incident_comp %>%
+month_02 <- month_comp %>%
   filter(Year == thisyear & Month == lastmonth)
 
-month_03 <- incident_comp %>%
+month_03 <- month_comp %>%
   filter(Year == lastyear & Month == thismonth)
 
 month_04 <- dpdIncidents %>%
