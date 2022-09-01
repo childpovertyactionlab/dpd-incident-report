@@ -22,8 +22,12 @@ library(htmltools)
 library(reactable)
 library(CPALtools)
 
-#datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
-datalib <- "E:/CPAL Dropbox/" # Michael Desktop
+datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
+#datalib <- "E:/CPAL Dropbox/" # Michael Desktop
+
+#### Import Arrest Data 
+arrests <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Data/Arrests/Processed Data/Dallas Police Arrests - All Arrests.csv")) %>%
+  select(incidentnum, arrestnumber, ararrestdate, ararresttime, arpremises)
 
 #### Defining vgc and firearms #####
 firearm <- c("Handgun", "Rifle","Firearm (Type Not Stated)", "Assault Weapon", "Unknown Type Gun", "Other/Unknown Gun", "Shotgun", "Other Gun", "Other Firearm")
@@ -31,6 +35,7 @@ vgc_type <- c("AGG ASSAULT - NFV", "MURDER & NONNEGLIGENT MANSLAUGHTER", "NEGLIG
 
 #### Importing Dallas Open Data portals and filtering into data frames #####
 dpdIncidents <- st_read(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Data/Incidents/Processed Data/ODP - Dallas Police Incidents.gpkg"), layer = "Group A") %>%
+  left_join(., arrests) %>%
   mutate(Date = as.Date(Date),
          Time = lubridate::hm(Time),
          Year = year(Date),
@@ -64,9 +69,14 @@ dpdIncidents <- st_read(paste0(datalib, "Data Library/City of Dallas/04_Public S
                               )))))))) %>%
   st_transform(crs = 4269) %>%
   select(incidentnum:premise, incident_address:time1, reporteddate, involvement:ro1name, status, mo, offensecode:nibrs_type, zip_code:geocoded_column.longitude, taag:compsex, weaponused, tot_victims:crime_title) %>%
-  filter(crime %in% c("MURDER & NONNEGLIGENT MANSLAUGHTER", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS"))
+  filter(crime %in% c("MURDER & NONNEGLIGENT MANSLAUGHTER", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS")) %>%
+    mutate(ArDate = as.Date(ararrestdate),
+         ArLength = time_length(ArDate-Date, unit = "days"),
+         ArOccur = ifelse(is.na(arrestnumber), "NO", "YES"))
+
 
 #unique(dpdIncidents$crime)
+
 
 # generate dataframes based on various time cuts needed for visuals
 currentmonth <- floor_date(today(), unit = "month")
@@ -97,6 +107,9 @@ dpdMonth <- dpdIncidents %>%
 
 dpdWeek <- dpdIncidents %>%
   filter(Date >= lastweek)
+
+arMonth <- dpdIncidents %>%
+  filter(ArDate >= last30 & ArDate < currentmonth)
 
 #### Import tenth mile grid of the City of Dallas #####
 grid_incidents <- st_read("data/dallas_tenthmilegrid.geojson") %>%
@@ -170,7 +183,6 @@ week_03 <- dpdIncidents %>%
   st_drop_geometry(.) %>%
   group_by(weekFlag) %>%
   summarise(count = n())
-
 ```
 
 ```{r, High Risk Cells, include = FALSE}
@@ -269,51 +281,48 @@ vgc_hr <- vgc30days %>%
   filter(HighRisk == TRUE)
 ```
 
-```{r, Arrests and Charges, include = FALSE}
-#arrests <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Police Incident Records/Dallas Open Data - Police Arrests Raw Data.csv")) %>%
-#  mutate(ararrestdate = ymd_hms(ararrestdate),
-#         incident_number_w_year = incidentnum) %>%
-#  filter(ararrestdate >= as.Date("2022-05-01 00:00:00") & ararrestdate < as.Date("2022-06-01 00:00:00"))
-
-#charges <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Incidents/Police Incident Records/Dallas Open Data - Police Arrest Charges Raw Data.csv")) %>%
-#  mutate(arrestdate = ymd_hms(arrestdate),
-#         incident_number_w_year = incidentnum) %>%
-#  filter(arrestdate >= as.Date("2022-05-01 00:00:00") & arrestdate < as.Date("2022-06-01 00:00:00"))
-
-#arrestenrich <-dpdMini %>%
-#  left_join(., arrests, by = "incident_number_w_year")
-
-#arrestvgc <- arrestenrich %>%
-#  filter(vgc_flag == 1) %>%
-#  mutate(arrest_flag = ifelse(is.na(arrestnumber), 0, 1))
-
-#arresttable <- arrestvgc %>%
-#  st_drop_geometry(.) %>%
-#  group_by(vgc_flag, arrest_flag) %>%
-#  summarise(count = n()) %>%
-#  mutate(percent = count/sum(count))
-
-#arresttot <- arresttable %>%
-#  filter(arrest_flag == 1)
-
-#Of those **`r incident_01$count`** violent gun crimes there have been  **`r arresttot$count`** arrests thus far. This amounts to an arrest rate of **`r paste0(round(arresttot$percent*100, digits = 1), "%")`**
-
-```
-
-## `r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`
+## `r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)` Summary
 
 The violent crime rate for **`r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`** was **`r round(month_01$count/(1304379/10000), digits = 3)`** per 10,000 residents.
 
-In the month of **`r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`** there was a total of **`r month_01$count`** violent gun crimes across the city. 
-
-For the week of **`r paste(lastweek)`** there was a total of **`r week_01$count`** violent gun crimes across the city. This is a difference of **`r week_01$count - week_02$count`** from the prior week.
+In the month of **`r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`** there was a total of **`r month_01$count`** violent gun crimes across the city.
 
 This is **`r ifelse(month_01$count > month_02$count, "an increase", "a decrease")` of `r paste0(round(((month_01$count-month_02$count)/month_02$count)*100, digits = 1), "%")`** from **`r paste(month(lastmonth, label = TRUE, abbr = FALSE), thisyear)`**, and **`r ifelse(month_01$count > month_03$count, "an increase", "a decrease")`** of **`r paste0(round(((month_01$count-month_03$count)/month_03$count)*100, digits = 1), "%")`** from **`r paste(month(thismonth, label = TRUE, abbr = FALSE), lastyear)`**.
 
-There were **`r nrow(filter(vgc30days, tot_victims >= 4))`** incidents with 4 or more victims across the city last month and **`r nrow(filter(vgc7days, tot_victims >= 4))`** last week.
+There were **`r nrow(filter(vgc30days, tot_victims >= 4))`** incidents with 4 or more victims across the city last month.
 
-**`r paste0(round(max(Division_VGC$perc)*100, digit = 1), "%")`** of all violent gun crimes in **`r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`** occurred in **`r maxDivision$division`** Division 
+**`r paste0(round(max(Division_VGC$perc)*100, digit = 1), "%")`** of all violent gun crimes in **`r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`** occurred in **`r maxDivision$division`** Division
 
 **`r paste0(round(vgc_hr$count/month_01$count*100, digit = 1), "%", " (", vgc_hr$count, ")")`** of Violent Gun Crimes occurred within a cell identified as "High Risk" by our most recent Risk Terrain Modeling Analysis.
+
+### Arrests
+```{r, Arrests, include = FALSE}
+ArVGC <- dpdMonth %>%
+  st_drop_geometry(.) %>%
+  filter(vgc_flag == 1) %>%
+  group_by(ArOccur) %>%
+  summarize(count = n(),
+            ArMedian = median(ArLength))
+
+ArSameDay <- dpdMonth %>%
+  st_drop_geometry(.) %>%
+  filter(vgc_flag == 1) %>%
+  filter(ArLength == 0) %>%
+  group_by(ArOccur) %>%
+  summarize(count = n())
+
+ArYes <- ArVGC %>%
+  filter(ArOccur == "YES")
+```
+
+In the last month there were a total of `r paste0(ArYes$count)` arrests for Violent Gun Crimes across the City of Dallas, which was `r paste0(round(ArYes$count/sum(ArVGC$count), digits = 3)*100, "%")` of all Violent Gun Crime incidents.
+
+`r paste0(ArSameDay$count)` arrests occurred on the same day of the incident.
+
+## Last Week Summary
+
+For the week of **`r paste(lastweek)`** there was a total of **`r week_01$count`** violent gun crimes across the city. This is a difference of **`r week_01$count - week_02$count`** from the prior week.
+
+There were **`r nrow(filter(vgc7days, tot_victims >= 4))`** incidents with 4 or more victims across the city last week.
 
 The reported U.S. violent crime rate includes murder, rape and sexual assault, robbery, and assault

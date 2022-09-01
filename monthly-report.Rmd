@@ -1,5 +1,5 @@
 ---
-title: 'Insights for March'
+title: 'Insights This Month'
 output:
   distill::distill_article:
     toc:false:
@@ -130,6 +130,42 @@ reactable(report_table,
             colGroup(name = "Percent Change", columns = c("Year2Year", "Diff3Year")),
             colGroup(name = "Average", columns = c("Avg3Year"))
           )
+            )
+```
+
+## Arrest in the Last Month
+```{r, Arrests, include = FALSE}
+arrest_table <- dpdMonth %>%
+  st_drop_geometry(.) %>%
+  group_by(ArOccur, crime_title) %>%
+  summarize(count = n()) %>%
+  pivot_wider(names_from = ArOccur, values_from = count) %>%
+  mutate(NO = ifelse(is.na(NO), 0, NO),
+         YES = ifelse(is.na(YES), 0, YES),
+         TOTAL = YES+NO,
+         ArPercent = paste0(round(YES/TOTAL, digits = 3)*100, "%")) %>%
+  select(crime_title, YES, TOTAL, ArPercent)
+
+reactable(arrest_table,
+          compact = TRUE,
+          class = "cpal-tbl",
+          columns = list(
+            crime_title = colDef(
+              name = "NIBRS"),
+            YES = colDef(
+              name = "Total Arrests"),
+            TOTAL = colDef(
+              name = "Total Incidents"),
+            ArPercent = colDef(
+              name = "Arrest Percentage")
+            ),
+          theme = reactableTheme(
+      headerStyle = list(
+        "&:hover[aria-sort]" = list(background = "hsl(0, 0%, 96%)"),
+        "&[aria-sort='ascending'], &[aria-sort='descending']" = list(background = "hsl(0, 0%, 96%)"),
+        borderColor = "#555"
+        )
+      )
             )
 ```
 
