@@ -22,8 +22,8 @@ library(htmltools)
 library(reactable)
 library(CPALtools)
 
-datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
-#datalib <- "E:/CPAL Dropbox/" # Michael Desktop
+#datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
+datalib <- "E:/CPAL Dropbox/" # Michael Desktop
 
 #### Import Arrest Data 
 arrests <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Data/Arrests/Processed Data/Dallas Police Arrests - All Arrests.csv")) %>%
@@ -281,17 +281,79 @@ vgc_hr <- vgc30days %>%
   filter(HighRisk == TRUE)
 ```
 
-## `r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)` Summary
+# `r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`
+
+## Last Month Summary
 
 The violent crime rate for **`r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`** was **`r round(month_01$count/(1304379/10000), digits = 3)`** per 10,000 residents.
 
-In the month of **`r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`** there was a total of **`r month_01$count`** violent gun crimes across the city.
+In the month of **`r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`** there were a total of **`r month_01$count`** violent gun crimes across the city.
+
+```{r, Monthly VGC Column Chart, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
+month_tbl <- dpdIncidents %>%
+  st_drop_geometry(.) %>%
+  filter(crime %in% vgc_type & Firearm == 1) %>%
+  filter(Date >= as.Date("2018-01-01")) %>%
+  group_by(Year, Month) %>%
+  summarize(vgcCount = n()) %>%
+  ungroup(.) %>%
+  mutate(Date = as.Date(paste0(Year, "-", Month, "-01")),
+         monthAvg = zoo::rollmean(vgcCount, k = 3, fill = NA))
+
+month_tbl %>%
+  ggplot(aes(x = Date, y = vgcCount)) +
+  geom_col(fill = "#595959",
+           alpha = 0.5) +
+  geom_line(aes(y = monthAvg),
+            color = "#ffffff",
+            size = 2) +
+  geom_line(aes(y = monthAvg),
+            color = "#e98816",
+            size = 1) +
+  labs(
+    title = "Violent Gun Crime by Month",
+    subtitle = "Relative to 3 Month Average",
+    x = "",
+    y = "",
+    color = 'VARIABLE'
+  ) +
+
+  theme_cpal()
+
+```
 
 This is **`r ifelse(month_01$count > month_02$count, "an increase", "a decrease")` of `r paste0(round(((month_01$count-month_02$count)/month_02$count)*100, digits = 1), "%")`** from **`r paste(month(lastmonth, label = TRUE, abbr = FALSE), thisyear)`**, and **`r ifelse(month_01$count > month_03$count, "an increase", "a decrease")`** of **`r paste0(round(((month_01$count-month_03$count)/month_03$count)*100, digits = 1), "%")`** from **`r paste(month(thismonth, label = TRUE, abbr = FALSE), lastyear)`**.
 
 There were **`r nrow(filter(vgc30days, tot_victims >= 4))`** incidents with 4 or more victims across the city last month.
 
 **`r paste0(round(max(Division_VGC$perc)*100, digit = 1), "%")`** of all violent gun crimes in **`r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`** occurred in **`r maxDivision$division`** Division
+
+```{r, Pie Chart Division, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
+pie_tbl <-vgc30days %>%
+  st_drop_geometry(.) %>%
+  group_by(division) %>%
+  summarize(vgcCount = n()) %>%
+  mutate(vgcPercent = round(vgcCount/sum(vgcCount), digits = 3)*100) %>%
+  arrange(desc(division)) %>%
+  mutate(ypos = cumsum(vgcPercent)- 0.5*vgcPercent)
+
+pie_tbl %>%
+  ggplot(aes(x = "", y = vgcPercent, fill = division)) +
+  geom_bar(stat = "identity", width = 1, color = "#ffffff", size = 1) +
+  scale_fill_manual(values = pal_cpalfac) +
+  coord_polar("y", start = 0) +
+  theme_void() +
+#  theme(axis.text.x=element_blank(),
+#        legend.position = "none") +
+  geom_text(aes(y = ypos, label = paste0(vgcPercent, "%")), color = "white", size=5) +
+  labs(
+    title = "Violent Gun Crime Across Divisions",
+    subtitle = "",
+    x = "",
+    y = "",
+    color = 'VARIABLE'
+  )
+```
 
 **`r paste0(round(vgc_hr$count/month_01$count*100, digit = 1), "%", " (", vgc_hr$count, ")")`** of Violent Gun Crimes occurred within a cell identified as "High Risk" by our most recent Risk Terrain Modeling Analysis.
 
@@ -315,13 +377,44 @@ ArYes <- ArVGC %>%
   filter(ArOccur == "YES")
 ```
 
-In the last month there were a total of `r paste0(ArYes$count)` arrests for Violent Gun Crimes across the City of Dallas, which was `r paste0(round(ArYes$count/sum(ArVGC$count), digits = 3)*100, "%")` of all Violent Gun Crime incidents.
+In the last month there were a total of **`r paste0(ArYes$count)`** arrests for Violent Gun Crimes across the City of Dallas, which accounted for **`r paste0(round(ArYes$count/sum(ArVGC$count), digits = 3)*100, "%")`** of all Violent Gun Crime incidents.
 
 `r paste0(ArSameDay$count)` arrests occurred on the same day of the incident.
 
 ## Last Week Summary
 
-For the week of **`r paste(lastweek)`** there was a total of **`r week_01$count`** violent gun crimes across the city. This is a difference of **`r week_01$count - week_02$count`** from the prior week.
+For the week of **`r paste(format(lastweek, format = "%B %d, %Y"))`** there was a total of **`r week_01$count`** violent gun crimes across the city. This is a difference of **`r week_01$count - week_02$count`** from the prior week.
+
+```{r, Weekly VGC Column Chart, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
+week_tbl <- dpdIncidents %>%
+  st_drop_geometry(.) %>%
+  filter(crime %in% vgc_type & Firearm == 1) %>%
+  filter(Date >= as.Date("2018-01-01")) %>%
+  group_by(Date) %>%
+  summarize(vgcCount = n()) %>%
+  mutate(sevenAvg = zoo::rollmean(vgcCount, k = 28, fill = NA))
+
+week_tbl %>%
+  ggplot(aes(x = Date, y = vgcCount)) +
+  geom_col(fill = "#595959",
+           alpha = 0.5) +
+  geom_line(aes(y = sevenAvg),
+            color = "#ffffff",
+            size = 1.5) +
+  geom_line(aes(y = sevenAvg),
+            color = "#e98816",
+            size = 1) +
+  scale_y_continuous(limits = c(0, 15)) +
+  labs(
+    title = "Violent Gun Crime by Week",
+    subtitle = "Relative to 28 Day Average",
+    x = "",
+    y = "",
+    color = 'VARIABLE'
+  ) +
+
+  theme_cpal()
+```
 
 There were **`r nrow(filter(vgc7days, tot_victims >= 4))`** incidents with 4 or more victims across the city last week.
 
