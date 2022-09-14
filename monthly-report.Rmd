@@ -14,7 +14,7 @@ The table below contains an overview of selected group A incidents for the most 
 
 * Note if Poisson E value is +/-3 then there is a significant difference between incident counts across time periods.
 
-```{r, Incidents Table, echo = FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10}
+```{r, Incidents Table, echo = FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10, layout = "l-body-outset"}
 incident_nibrs <- dpdIncidents %>%
   filter(crime %in% c("AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS", "MURDER & NONNEGLIGENT MANSLAUGHTER")) %>%
   st_drop_geometry(.) %>%
@@ -81,8 +81,8 @@ report_table <- incident_table %>%
                                                                  ifelse(crime == "BURGLARY-BUSINESS", 7,
                                                                         "ERROR"
                               )))))))) %>%
-  select(-(dpd_2017:dpd_2020), -crime) %>%
-  relocate(crime_order, crime_title, dpd_2021, dpd_2022, poissonYtY, Year2Year, Avg3Year, Diff3Year)
+  select(-(dpd_2017:dpd_2020), -crime, -Diff3Year) %>%
+  relocate(crime_order, crime_title, dpd_2021, dpd_2022, poissonYtY, Year2Year, Avg3Year)
 
 ##### Table
 reactable(report_table,
@@ -105,18 +105,13 @@ reactable(report_table,
               align = "center"
               ),
             Year2Year = colDef(
-              name = "One Year",
+              name = "1-Year",
               defaultSortOrder = "desc",
               align = "center"
               ),
             Avg3Year = colDef(
-              name = "Three Year",
-              defaultSortOrder = "desc"),
-            Diff3Year = colDef(
-              name = "Three Years",
-              defaultSortOrder = "desc",
-              align = "center"
-              )
+              name = "3-Year",
+              defaultSortOrder = "desc")
             ),
           theme = reactableTheme(
       headerStyle = list(
@@ -127,14 +122,53 @@ reactable(report_table,
       ),
       columnGroups = list(
             colGroup(name = paste(month(last30, label = TRUE, abbr = FALSE), "Incidents"), columns = c("dpd_2021", "dpd_2022")),
-            colGroup(name = "Percent Change", columns = c("Year2Year", "Diff3Year")),
+            colGroup(name = "Percent Change", columns = c("Year2Year")),
             colGroup(name = "Average", columns = c("Avg3Year"))
           )
             )
 ```
 
+```{r, Incident Line Graph, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
+#### Plot Time Series by Month #####
+incident_table %>%
+  filter(Date != currentmonth) %>%
+  filter(crime_title != "Murder & Nonnegligent Manslaughter") %>%
+  filter(Date >= as.Date("2018-01-01")) %>%
+  mutate(YearMonth = as.Date(paste0(Year, "-", Month, "-01"))) %>%
+  group_by(crime_title) %>%
+  arrange(YearMonth) %>%
+  mutate(Avg3Month = zoo::rollmean(count, k = 3, fill = NA)) %>%
+  ungroup(.) %>%
+  ggplot(
+    aes(
+      x = YearMonth,
+      y = count,
+      group = crime_title,
+      color = crime_title
+    )
+  ) +
+  geom_col(fill = "#595959",
+           color = "#595959",
+           alpha = 0.5) +
+  geom_line(size=2, alpha = 0.9, color = "#ffffff", stat = "identity") +
+  geom_line(size=1, alpha = 0.9, stat = "identity") +
+  scale_color_manual(values = pal_cpalfac) +
+  facet_wrap(~crime_title) +
+  labs(
+    title = "Select Group A Incidents Over Time",
+    subtitle = paste("Between January 2018 -", month(last30, label = TRUE, abbr = FALSE), year(last30)),
+    x = "",
+    y = "",
+    color = 'VARIABLE'
+  ) +
+  theme_cpal(base_size = 28) +
+  theme(axis.text.x=element_text(angle=45, hjust=1),
+        legend.position = "none")
+
+```
+
 ## Arrest in the Last Month
-```{r, Arrests, include = FALSE}
+```{r, Arrests, echo = FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10, layout = "l-body-outset"}
 arrest_table <- dpdMonth %>%
   st_drop_geometry(.) %>%
   group_by(ArOccur, crime_title) %>%
@@ -169,47 +203,6 @@ reactable(arrest_table,
             )
 ```
 
-## Count of Incidents by Year {-}
-
-```{r, Incident Line Graph, echo = FALSE, message=FALSE, warning=FALSE, fig.width=10,fig.height=8}
-#### Plot Time Series by Month #####
-incident_table %>%
-  filter(Date != currentmonth) %>%
-  mutate(YearMonth = as.Date(paste0(Year, "-", Month, "-01"))) %>%
-  group_by(crime_title) %>%
-  arrange(YearMonth) %>%
-  mutate(Avg3Month = zoo::rollmean(count, k = 3, fill = NA)) %>%
-  ungroup(.) %>%
-  ggplot(
-    aes(
-      x = YearMonth,
-      y = count,
-      group = crime_title,
-      color = crime_title
-    )
-  ) +
-  geom_line(size=1, alpha = 0.9, stat = "identity") +
-  scale_color_manual(values = pal_cpalfac) +
-  labs(
-    title = "Select Group A Incidents Over Time",
-    subtitle = paste("Between January 2017 -", month(last30, label = TRUE, abbr = FALSE), year(last30)),
-    x = "",
-    y = "",
-    color = 'VARIABLE'
-  ) +
-  theme_cpal(base_size = 28) +
-  theme(legend.text=element_text(size=14))
-```
-
-## Average Incidents by Time of Day {-}
-
-``` {r, include = FALSE}
-#For the month of **`r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`**
-#**X%** of incidents across the city occurred between **HH:MM:** and **HH:MM:**
-#**Y%** of incidents across the city occurred between **HH:MM:** and **HH:MM:**
-
-```
-
 ## Incidents by Time Period {-}
 
 Facet wrap pie charts of incident types grouped by time of day (early morning, morning, afternoon, evening, late night) 
@@ -240,6 +233,7 @@ dpdIncidents %>%
   theme_cpal(base_size = 28) +
   theme(axis.text.x=element_text(angle=45, hjust=1),
         legend.position = "none")
+
 
 ```
 

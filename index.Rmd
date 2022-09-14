@@ -334,20 +334,38 @@ pie_tbl <-vgc30days %>%
   group_by(division) %>%
   summarize(vgcCount = n()) %>%
   mutate(vgcPercent = round(vgcCount/sum(vgcCount), digits = 3)*100) %>%
-  arrange(desc(division)) %>%
-  mutate(ypos = cumsum(vgcPercent)- 0.5*vgcPercent)
+  arrange(desc(vgcPercent)) %>%
+  mutate(ypos = cumsum(vgcPercent)- 0.5*vgcPercent,
+         division = ifelse(division == "North Central", "NC",
+                           ifelse(division == "Northwest", "NW",
+                                  ifelse(division == "Northeast", "NE",
+                                         ifelse(division == "South Central", "SC",
+                                                ifelse(division == "Southwest", "SW",
+                                                       ifelse(division == "Southeast", "SE",
+                                                              ifelse(division == "Central", "C", "ERROR"
+                                  ))))))))
 
 pie_tbl %>%
-  ggplot(aes(x = "", y = vgcPercent, fill = division)) +
+  ggplot(aes(x = "", y = vgcPercent, fill = reorder(division, vgcPercent))) +
   geom_bar(stat = "identity", width = 1, color = "#ffffff", size = 1) +
   scale_fill_manual(values = pal_cpalfac) +
   coord_polar("y", start = 0) +
-  theme_void() +
-#  theme(axis.text.x=element_blank(),
-#        legend.position = "none") +
-  geom_text(aes(y = ypos, label = paste0(vgcPercent, "%")), color = "white", size=5) +
+  theme_cpal() +
+  theme(legend.position = "none",
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        ) +
+  geom_text(aes(x = 1.2, 
+                y = ypos, 
+                label = paste0(division, "\n",
+                               vgcPercent, "%")), 
+            color = "white", 
+            fontface = "bold",
+            size=12) +
   labs(
-    title = "Violent Gun Crime Across Divisions",
+    title = "Percent of Violent Gun Crimes by Division",
     subtitle = "",
     x = "",
     y = "",

@@ -11,37 +11,46 @@ github-repo: childpovertyactionlab/dpd-incident-report
 ## Violent Gun Crimes in `r paste(month(thismonth, label = TRUE, abbr = FALSE), thisyear)`
 
 ```{r, echo = FALSE, message=FALSE, warning=FALSE, layout="l-page", fig.height=8}
-
 dpdPalette <- colorFactor(
   palette = c(CPALtools::pal_cpalfac),
   domain = dpdMonth$crime_title
 )
 
-monthPopup <- paste0("<b>Incident: </b>", dpdMonth$incidentnum, " <b>Beat: </b>", dpdMonth$beat, "<br/>",
-                   "<b>Officer: </b>", dpdMonth$ro1name, "<b> Badge: </b>", dpdMonth$ro1badge, "<br/>",
-                   "<b>NIBRS: </b>", dpdMonth$nibrs_title, "<br/>",
-                   "<b>Date: </b>", dpdMonth$Date, "<br/>",
-                   "<b>Time: </b>", dpdMonth$Time, "<b> Time of Day: </b>", dpdMonth$ToD, "<br/>",
-                   "<b>Address: </b>", dpdMonth$incident_address, "<br/>",
-                   "<b>Is VGC?: </b>", dpdMonth$vgc_flag, " <b>Premise: </b>", dpdMonth$premise, "<br/>",
-                   "<b>MO: </b>", dpdMonth$mo, "<br/>"
+monthPopup <- paste0("<b>Incident: </b>", dpdMonth$incidentnum, "<br/>", 
+                     "<b>Beat: </b>", dpdMonth$beat, "<br/>",
+#                     "<b>Officer: </b>", dpdMonth$ro1name, "<br/>",
+#                     "<b> Badge: </b>", dpdMonth$ro1badge, "<br/>",
+                     "<b>NIBRS: </b>", dpdMonth$nibrs_title, "<br/>",
+                     "<b>Date: </b>", dpdMonth$Date, "<br/>",
+                     "<b>Time: </b>", format(dpdMonth$Time, "%H:%M:%S"), "<br/>",
+                     "<b> Time of Day: </b>", dpdMonth$ToD, "<br/>",
+                     "<b>Address: </b>", dpdMonth$incident_address, "<br/>",
+                     "<b>Is VGC?: </b>", dpdMonth$vgc_flag, "<br/>",
+                     "<b>Premise: </b>", dpdMonth$premise, "<br/>",
+                     "<b>MO: </b>", dpdMonth$mo, "<br/>"
                    
                    )
 
-weekPopup <- paste0("<b>Incident: </b>", dpdWeek$incidentnum, " <b>Beat: </b>", dpdWeek$beat, "<br/>",
-                   "<b>Officer: </b>", dpdMonth$ro1name, "<b> Badge: </b>", dpdMonth$ro1badge, "<br/>",
-                   "<b>NIBRS: </b>", dpdWeek$nibrs_title, "<br/>",
-                   "<b>Date: </b>", dpdWeek$Date, "<br/>",
-                   "<b>Time: </b>", dpdWeek$Time, " <b>Time of Day: </b>", dpdWeek$ToD, "<br/>",
-                   "<b>Address: </b>", dpdWeek$incident_address, "<br/>",
-                   "<b>Is VGC?: </b>", dpdMonth$vgc_flag, " <b>Premise: </b>", dpdWeek$premise, "<br/>",
-                   "<b>MO: </b>", dpdWeek$mo, "<br/>"
+weekPopup <- paste0("<b>Incident: </b>", dpdWeek$incidentnum, "<br/>", 
+                    "<b>Beat: </b>", dpdWeek$beat, "<br/>",
+#                    "<b>Officer: </b>", dpdMonth$ro1name, "<br/>",
+#                    "<b> Badge: </b>", dpdMonth$ro1badge, "<br/>",
+                    "<b>NIBRS: </b>", dpdWeek$nibrs_title, "<br/>",
+                    "<b>Date: </b>", dpdWeek$Date, "<br/>",
+                    "<b>Time: </b>", format(dpdWeek$Time, "%H:%M:%S"), "<br/>",
+                    "<b>Time of Day: </b>", dpdWeek$ToD, "<br/>",
+                    "<b>Address: </b>", dpdWeek$incident_address, "<br/>",
+                    "<b>Is VGC?: </b>", dpdMonth$vgc_flag, "<br/>",
+                    "<b>Premise: </b>", dpdWeek$premise, "<br/>",
+                    "<b>MO: </b>", dpdWeek$mo, "<br/>"
                    
                    )
 
+bbox <- st_bbox(st_union(dpd_divisions)) %>%
+  as.vector()
 
 leaflet() %>%
-#  setView(lng = -96.7970, lat = 32.7767, zoom = 10) %>%
+  fitBounds(bbox[1], bbox[2], bbox[3], bbox[4]) %>%
   addTiles(urlTemplate = cpal_mapbox, attribution = cpal_leaflet) %>%
   addPolygons(data = SE_HR,
               weight = 1,
@@ -116,7 +125,7 @@ leaflet() %>%
                    group = "Incidents Last Month") %>%
   addCircleMarkers(data = dpdWeek,
                    stroke = FALSE,
-                   radius = 4,
+                   radius = 6,
                    fillOpacity = 0.8,
                    color = ~dpdPalette(crime_title),
                    popup = ~weekPopup,
@@ -132,5 +141,6 @@ leaflet() %>%
     overlayGroups = c("Incidents Last Month", "Incidents Last Week", "High Risk Cell"),
     baseGroups = c("DPD Divisions"),
     position = "topright",
-    options = layersControlOptions(collapsed = FALSE))
+    options = layersControlOptions(collapsed = FALSE)) %>%
+  hideGroup("Incidents Last Month")
 ```
