@@ -786,6 +786,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
   d-article table.gt_table td,
   d-article table.gt_table th {
     border-bottom: none;
+    font-size: 100%;
   }
 
   .html-widget {
@@ -1858,15 +1859,21 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
 
       // hoverable references
       $('span.citation[data-cites]').each(function() {
-        if ($(this).children()[0].nodeName == "D-FOOTNOTE") {
-          var fn = $(this).children()[0]
+        const citeChild = $(this).children()[0]
+        // Do not process if @xyz has been used without escaping and without bibliography activated
+        // https://github.com/rstudio/distill/issues/466
+        if (citeChild === undefined) return true
+
+        if (citeChild.nodeName == "D-FOOTNOTE") {
+          var fn = citeChild
           $(this).html(fn.shadowRoot.querySelector("sup"))
           $(this).id = fn.id
           fn.remove()
         }
         var refs = $(this).attr('data-cites').split(" ");
         var refHtml = refs.map(function(ref) {
-          return "<p>" + $('#ref-' + ref).html() + "</p>";
+          // Could use CSS.escape too here, we insure backward compatibility in navigator
+          return "<p>" + $('div[id="ref-' + ref + '"]').html() + "</p>";
         }).join("\n");
         window.tippy(this, {
           allowHTML: true,
@@ -2382,7 +2389,7 @@ code span.wa { color: #5e5e5e; font-style: italic; } /* Warning */
     color: var(--hover-color, white);
   }</style>
   <!--/radix_placeholder_distill-->
-  <script src="site_libs/header-attrs-2.14/header-attrs.js"></script>
+  <script src="site_libs/header-attrs-2.17/header-attrs.js"></script>
   <script src="site_libs/core-js-2.5.3/shim.min.js"></script>
   <script src="site_libs/react-17.0.0/react.min.js"></script>
   <script src="site_libs/react-17.0.0/react-dom.min.js"></script>
@@ -2453,47 +2460,37 @@ About
 
 
 <div class="d-article">
-<h2 class="unnumbered" id="select-group-a-incidents-overview">Select
-Group A Incidents Overview</h2>
-<p>The table below contains an overview of selected group A incidents
-for the most recent complete month (September 2022). Data focuses on the
-count of incidents within the full month compared to the same month for
-the previous year and a three year average for the specified month.</p>
+<h2 class="unnumbered" id="select-group-a-incidents-overview">Select Group A Incidents Overview</h2>
+<p>The table below contains an overview of selected group A incidents for the most recent complete month (September 2022). Data focuses on the count of incidents within the full month compared to the same month for the previous year and a three year average for the specified month.</p>
 <ul>
-<li>Note if Poisson E value is +/-3 then there is a significant
-difference between incident counts across time periods.</li>
+<li>Note if Poisson E value is +/-3 then there is a significant difference between incident counts across time periods.</li>
 </ul>
 <div class="layout-chunk" data-layout="l-body-outset">
-<div id="htmlwidget-4a0478655d2fc789a24c" class="reactable html-widget" style="width:auto;height:auto;"></div>
-<script type="application/json" data-for="htmlwidget-4a0478655d2fc789a24c">{"x":{"tag":{"name":"Reactable","attribs":{"data":{"crime_order":["3","7","6","1","4","5","2"],"crime_title":["Aggravated Assault (NFV)","Burglary (Business)","Burglary (Residence)","Murder & Nonnegligent Manslaughter","Robbery (Business)","Robbery (Individual)","Violent Gun Crime"],"dpd_2021":[228,337,260,6,18,111,175],"dpd_2022":[244,209,213,8,20,118,180],"poissonYtY":[1.04,-7.8,-3.06,0.76,0.46,0.65,0.38],"Year2Year":["7%","-38%","-18.1%","33.3%","11.1%","6.3%","2.9%"],"Avg3Year":[238.7,295.3,246,7.3,22.3,138,179.7]},"columns":[{"accessor":"crime_order","name":"Order","type":"character","show":false},{"accessor":"crime_title","name":"NIBRS","type":"character"},{"accessor":"dpd_2021","name":"2021","type":"numeric"},{"accessor":"dpd_2022","name":"2022","type":"numeric"},{"accessor":"poissonYtY","name":"Poisson E","type":"numeric","defaultSortDesc":true,"align":"center"},{"accessor":"Year2Year","name":"1-Year","type":"character","defaultSortDesc":true,"align":"center"},{"accessor":"Avg3Year","name":"3-Year","type":"numeric","defaultSortDesc":true}],"columnGroups":[{"name":"September Incidents","columns":["dpd_2021","dpd_2022"]},{"name":"Percent Change","columns":["Year2Year"]},{"name":"Average","columns":["Avg3Year"]}],"defaultSorted":[{"id":"crime_order","desc":false}],"defaultPageSize":10,"paginationType":"numbers","showPageInfo":true,"minRows":1,"compact":true,"className":"cpal-tbl","theme":{"headerStyle":{"&:hover[aria-sort]":{"background":"hsl(0, 0%, 96%)"},"&[aria-sort='ascending'], &[aria-sort='descending']":{"background":"hsl(0, 0%, 96%)"},"borderColor":"#555"}},"dataKey":"32e7d810b6e088d54c4ba7bae8544027"},"children":[]},"class":"reactR_markup"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-843d09ed4b217a052d88" class="reactable html-widget" style="width:auto;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-843d09ed4b217a052d88">{"x":{"tag":{"name":"Reactable","attribs":{"data":{"crime_order":["3","7","6","1","4","5","2"],"crime_title":["Aggravated Assault (NFV)","Burglary (Business)","Burglary (Residence)","Murder & Nonnegligent Manslaughter","Robbery (Business)","Robbery (Individual)","Violent Gun Crime"],"dpd_2021":[228,337,260,6,18,111,175],"dpd_2022":[249,230,243,5,20,117,178],"poissonYtY":[1.36,-6.38,-1.07,-0.43,0.46,0.56,0.23],"Year2Year":["9.2%","-31.8%","-6.5%","-16.7%","11.1%","5.4%","1.7%"],"Avg3Year":[240.3,302.3,256,6.3,22.3,137.7,179]},"columns":[{"accessor":"crime_order","name":"Order","type":"character","show":false},{"accessor":"crime_title","name":"NIBRS","type":"character"},{"accessor":"dpd_2021","name":"2021","type":"numeric"},{"accessor":"dpd_2022","name":"2022","type":"numeric"},{"accessor":"poissonYtY","name":"Poisson E","type":"numeric","defaultSortDesc":true,"align":"center"},{"accessor":"Year2Year","name":"1-Year","type":"character","defaultSortDesc":true,"align":"center"},{"accessor":"Avg3Year","name":"3-Year","type":"numeric","defaultSortDesc":true}],"columnGroups":[{"name":"September Incidents","columns":["dpd_2021","dpd_2022"]},{"name":"Percent Change","columns":["Year2Year"]},{"name":"Average","columns":["Avg3Year"]}],"defaultSorted":[{"id":"crime_order","desc":false}],"defaultPageSize":10,"paginationType":"numbers","showPageInfo":true,"minRows":1,"compact":true,"className":"cpal-tbl","theme":{"headerStyle":{"&:hover[aria-sort]":{"background":"hsl(0, 0%, 96%)"},"&[aria-sort='ascending'], &[aria-sort='descending']":{"background":"hsl(0, 0%, 96%)"},"borderColor":"#555"}},"dataKey":"30c9eb0f20ebd460a07bcc96e9ecb31c"},"children":[]},"class":"reactR_markup"},"evals":[],"jsHooks":[]}</script>
 </div>
 <div class="layout-chunk" data-layout="l-body">
 <p><img src="monthly-report_files/figure-html5/Incident%20Line%20Graph-1.png" width="960" /></p>
 </div>
 <h2 id="arrest-in-the-last-month">Arrest in the Last Month</h2>
 <div class="layout-chunk" data-layout="l-body-outset">
-<div id="htmlwidget-256f6533a00e373c381c" class="reactable html-widget" style="width:auto;height:auto;"></div>
-<script type="application/json" data-for="htmlwidget-256f6533a00e373c381c">{"x":{"tag":{"name":"Reactable","attribs":{"data":{"crime_title":["Aggravated Assault (NFV)","Burglary (Business)","Burglary (Residence)","Murder & Nonnegligent Manslaughter","Robbery (Business)","Robbery (Individual)"],"YES":[15,1,0,0,1,3],"TOTAL":[244,209,213,8,20,118],"ArPercent":["6.1%","0.5%","0%","0%","5%","2.5%"]},"columns":[{"accessor":"crime_title","name":"NIBRS","type":"character"},{"accessor":"YES","name":"Total Arrests","type":"numeric"},{"accessor":"TOTAL","name":"Total Incidents","type":"numeric"},{"accessor":"ArPercent","name":"Arrest Percentage","type":"character"}],"defaultPageSize":10,"paginationType":"numbers","showPageInfo":true,"minRows":1,"compact":true,"className":"cpal-tbl","theme":{"headerStyle":{"&:hover[aria-sort]":{"background":"hsl(0, 0%, 96%)"},"&[aria-sort='ascending'], &[aria-sort='descending']":{"background":"hsl(0, 0%, 96%)"},"borderColor":"#555"}},"dataKey":"1c697a7d02785f3561286c0c9cde68bf"},"children":[]},"class":"reactR_markup"},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-d97edea083ec48ac42b8" class="reactable html-widget" style="width:auto;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-d97edea083ec48ac42b8">{"x":{"tag":{"name":"Reactable","attribs":{"data":{"crime_title":["Aggravated Assault (NFV)","Burglary (Business)","Burglary (Residence)","Murder & Nonnegligent Manslaughter","Robbery (Business)","Robbery (Individual)"],"YES":[27,3,1,0,3,5],"TOTAL":[249,230,243,5,20,117],"ArPercent":["10.8%","1.3%","0.4%","0%","15%","4.3%"]},"columns":[{"accessor":"crime_title","name":"NIBRS","type":"character"},{"accessor":"YES","name":"Total Arrests","type":"numeric"},{"accessor":"TOTAL","name":"Total Incidents","type":"numeric"},{"accessor":"ArPercent","name":"Arrest Percentage","type":"character"}],"defaultPageSize":10,"paginationType":"numbers","showPageInfo":true,"minRows":1,"compact":true,"className":"cpal-tbl","theme":{"headerStyle":{"&:hover[aria-sort]":{"background":"hsl(0, 0%, 96%)"},"&[aria-sort='ascending'], &[aria-sort='descending']":{"background":"hsl(0, 0%, 96%)"},"borderColor":"#555"}},"dataKey":"6e588c0ff2cd9d401c8f6769cffb76b6"},"children":[]},"class":"reactR_markup"},"evals":[],"jsHooks":[]}</script>
 </div>
-<h2 class="unnumbered" id="incidents-by-time-period">Incidents by Time
-Period</h2>
-<p>Facet wrap pie charts of incident types grouped by time of day (early
-morning, morning, afternoon, evening, late night)</p>
+<h2 class="unnumbered" id="incidents-by-time-period">Incidents by Time Period</h2>
+<p>Facet wrap pie charts of incident types grouped by time of day (early morning, morning, afternoon, evening, late night)</p>
 <div class="layout-chunk" data-layout="l-body">
 <p><img src="monthly-report_files/figure-html5/Facet%20Pie%20Charts-1.png" width="960" /></p>
 </div>
-<h2 class="unnumbered" id="incidents-by-location-of-incident">Incidents
-by Location of Incident</h2>
+<h2 class="unnumbered" id="incidents-by-location-of-incident">Incidents by Location of Incident</h2>
 <div class="layout-chunk" data-layout="l-body">
 <p><img src="monthly-report_files/figure-html5/unnamed-chunk-1-1.png" width="960" /></p>
 </div>
-<h2 class="unnumbered" id="incidents-by-race-of-victim">Incidents by
-Race of Victim</h2>
+<h2 class="unnumbered" id="incidents-by-race-of-victim">Incidents by Race of Victim</h2>
 <div class="layout-chunk" data-layout="l-body">
 <p><img src="monthly-report_files/figure-html5/unnamed-chunk-2-1.png" width="960" /></p>
 </div>
-<div class="sourceCode" id="cb1"><pre
-class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r distill-force-highlighting-css"><code class="sourceCode r"></code></pre></div>
 <!--radix_placeholder_article_footer-->
 <!--/radix_placeholder_article_footer-->
 </div>
