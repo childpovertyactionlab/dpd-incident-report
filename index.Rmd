@@ -22,8 +22,8 @@ library(htmltools)
 library(reactable)
 library(CPALtools)
 
-#datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
-datalib <- "E:/CPAL Dropbox/" # Michael Desktop
+datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
+#datalib <- "E:/CPAL Dropbox/" # Michael Desktop
 
 #### Import Arrest Data 
 arrests <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Data/Arrests/Processed Data/Dallas Police Arrests - All Arrests.csv")) %>%
@@ -36,40 +36,17 @@ vgc_type <- c("AGG ASSAULT - NFV", "MURDER & NONNEGLIGENT MANSLAUGHTER", "NEGLIG
 #### Importing Dallas Open Data portals and filtering into data frames #####
 dpdIncidents <- st_read(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Data/Incidents/Processed Data/ODP - Dallas Police Incidents.gpkg"), layer = "Group A") %>%
   left_join(., arrests) %>%
-  mutate(Date = as.Date(Date),
-         Time = lubridate::hm(Time),
-         Year = year(Date),
-         Month = month(Date),
-         Day = day(Date),
-         division = str_to_title(division),
-         crime_category = as.factor(nibrs_crime_category),
-         crime = as.factor(nibrs_crime),
-         Weekday = wday(Date),
-         DateTime = format(paste(Date, Time), format="%Y-%m-%d %H:%M:%S"),
-         hour = hour(Time),
-         vgc_flag = ifelse(nibrs_crime %in% vgc_type & Firearm == 1, 1, 0),
-         ToD = ifelse(hour >= 3 & hour < 7, "Early Morning",
-                      ifelse(hour >= 7 & hour < 13, "Morning",
-                             ifelse(hour >= 13 & hour < 18, "Afternoon",
-                                    ifelse(hour >= 18 & hour < 23, "Evening",
-                                           ifelse(hour >= 23 | hour < 3, "Night", "NA")
-                                           )
-                                    )
-                             )
-                      )
-         ) %>%
-  mutate(crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
-                              ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
-                                     ifelse(crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
-                                            ifelse(crime == "ROBBERY-BUSINESS", "Robbery (Business)",
-                                                   ifelse(crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
-                                                          ifelse(crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
-                                                                 ifelse(crime == "BURGLARY-BUSINESS", "Burglary (Business)",
+  mutate(crime_title = ifelse(nibrs_crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
+                              ifelse(nibrs_crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
+                                     ifelse(nibrs_crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
+                                            ifelse(nibrs_crime == "ROBBERY-BUSINESS", "Robbery (Business)",
+                                                   ifelse(nibrs_crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
+                                                          ifelse(nibrs_crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
+                                                                 ifelse(nibrs_crime == "BURGLARY-BUSINESS", "Burglary (Business)",
                                                                         "ERROR"
                               )))))))) %>%
   st_transform(crs = 4269) %>%
-  select(incidentnum:premise, incident_address:time1, reporteddate, involvement:ro1name, status, mo, offensecode:nibrs_type, zip_code:geocoded_column.longitude, taag:compsex, weaponused, tot_victims:crime_title) %>%
-  filter(crime %in% c("MURDER & NONNEGLIGENT MANSLAUGHTER", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS")) %>%
+  filter(nibrs_crime %in% c("MURDER & NONNEGLIGENT MANSLAUGHTER", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS")) %>%
     mutate(ArDate = as.Date(ararrestdate),
          ArLength = time_length(ArDate-Date, unit = "days"),
          ArOccur = ifelse(is.na(arrestnumber), "NO", "YES"))
@@ -81,8 +58,8 @@ dpdIncidents <- st_read(paste0(datalib, "Data Library/City of Dallas/04_Public S
 # generate dataframes based on various time cuts needed for visuals
 currentmonth <- floor_date(today(), unit = "month")
 last30 <- currentmonth-months(1)
-lastweek <- as.Date(max(dpdIncidents$date1))-days(7)
-twoweeks <- as.Date(max(dpdIncidents$date1))-days(14)
+lastweek <- as.Date(max(dpdIncidents$Date))-days(7)
+twoweeks <- as.Date(max(dpdIncidents$Date))-days(14)
 
 # generate vgc data frames
 # what need is there for these?
@@ -136,7 +113,7 @@ thismonth <- month(last30)
 lastmonth <- month(last30 - month(1))
 
 month_comp <- dpdIncidents %>%
-  filter(crime %in% vgc_type & Firearm == 1) %>%
+  filter(nibrs_crime %in% vgc_type & Firearm == 1) %>%
   filter((Year == thisyear & Month == thismonth) | #most recent complete month
            (Year == lastyear & Month == thismonth) | #year prior but same month
            (Year == thisyear & Month == lastmonth)) %>% #last month
@@ -160,7 +137,7 @@ month_04 <- dpdIncidents %>%
   summarise(count = n())
 
 week_comp <- dpdIncidents %>%
-  filter(crime %in% vgc_type & Firearm == 1) %>%
+  filter(nibrs_crime %in% vgc_type & Firearm == 1) %>%
   mutate(weekFlag = ifelse(Date >= lastweek, "This Week",
                            ifelse(Date >= twoweeks & Date < lastweek, "Last Week",
                                   "IGNORE"))) %>%
