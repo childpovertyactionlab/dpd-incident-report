@@ -16,29 +16,29 @@ The table below contains an overview of selected group A incidents for the most 
 
 ```{r, Incidents Table, echo = FALSE, message=FALSE, warning=FALSE, fig.height=8, fig.width=10, layout = "l-body-outset"}
 incident_nibrs <- dpdIncidents %>%
-  filter(crime %in% c("AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS", "MURDER & NONNEGLIGENT MANSLAUGHTER")) %>%
+  filter(nibrs_crime %in% c("AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS", "MURDER & NONNEGLIGENT MANSLAUGHTER")) %>%
   st_drop_geometry(.) %>%
-  group_by(Year, Month, crime) %>%
+  group_by(Year, Month, nibrs_crime) %>%
   summarize(count = n())
 
 incident_vgc <- dpdIncidents %>%
-  filter(vgc_flag == 1 & crime %in% vgc_type) %>%
-  mutate(crime = "VIOLENT GUN CRIME") %>%
+  filter(vgc_flag == 1 & nibrs_crime %in% vgc_type) %>%
+  mutate(nibrs_crime = "VIOLENT GUN CRIME") %>%
   st_drop_geometry(.) %>%
-  group_by(Year, Month, crime) %>%
+  group_by(Year, Month, nibrs_crime) %>%
   summarize(count = n())
 
 incident_table <- full_join(incident_nibrs, incident_vgc) %>%
   mutate(Date = as.Date(paste0(Year, "-", Month, "-01"))) %>%
   filter(Year > 2016,
          Date <= currentmonth) %>%
-  mutate(crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
-                              ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
-                                     ifelse(crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
-                                            ifelse(crime == "ROBBERY-BUSINESS", "Robbery (Business)",
-                                                   ifelse(crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
-                                                          ifelse(crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
-                                                                 ifelse(crime == "BURGLARY-BUSINESS", "Burglary (Business)",
+  mutate(crime_title = ifelse(nibrs_crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
+                              ifelse(nibrs_crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
+                                     ifelse(nibrs_crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
+                                            ifelse(nibrs_crime == "ROBBERY-BUSINESS", "Robbery (Business)",
+                                                   ifelse(nibrs_crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
+                                                          ifelse(nibrs_crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
+                                                                 ifelse(nibrs_crime == "BURGLARY-BUSINESS", "Burglary (Business)",
                                                                         "ERROR"
                               ))))))))
 
@@ -62,23 +62,23 @@ report_table <- incident_table %>%
          Year2Year = paste0(round(((dpd_2022-dpd_2021)/dpd_2021)*100, digits = 1), "%"),
          Avg3Year = round((dpd_2020+dpd_2021+dpd_2022)/3, digits = 1),
          Diff3Year = paste0(round(((dpd_2022-Avg3Year)/Avg3Year)*100, digits = 1), "%"),
-         crime = factor(crime, levels = c("MURDER & NONNEGLIGENT MANSLAUGHTER", "VIOLENT GUN CRIME", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS")),
-         crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
-                              ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
-                                     ifelse(crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
-                                            ifelse(crime == "ROBBERY-BUSINESS", "Robbery (Business)",
-                                                   ifelse(crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
-                                                          ifelse(crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
-                                                                 ifelse(crime == "BURGLARY-BUSINESS", "Burglary (Business)",
+         crime = factor(nibrs_crime, levels = c("MURDER & NONNEGLIGENT MANSLAUGHTER", "VIOLENT GUN CRIME", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS")),
+         crime_title = ifelse(nibrs_crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
+                              ifelse(nibrs_crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
+                                     ifelse(nibrs_crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
+                                            ifelse(nibrs_crime == "ROBBERY-BUSINESS", "Robbery (Business)",
+                                                   ifelse(nibrs_crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
+                                                          ifelse(nibrs_crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
+                                                                 ifelse(nibrs_crime == "BURGLARY-BUSINESS", "Burglary (Business)",
                                                                         "ERROR"
                               ))))))),
-         crime_order = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", 1,
-                              ifelse(crime == "VIOLENT GUN CRIME", 2,
-                                     ifelse(crime == "AGG ASSAULT - NFV", 3,
-                                            ifelse(crime == "ROBBERY-BUSINESS", 4,
-                                                   ifelse(crime == "ROBBERY-INDIVIDUAL", 5,
-                                                          ifelse(crime == "BURGLARY-RESIDENCE", 6,
-                                                                 ifelse(crime == "BURGLARY-BUSINESS", 7,
+         crime_order = ifelse(nibrs_crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", 1,
+                              ifelse(nibrs_crime == "VIOLENT GUN CRIME", 2,
+                                     ifelse(nibrs_crime == "AGG ASSAULT - NFV", 3,
+                                            ifelse(nibrs_crime == "ROBBERY-BUSINESS", 4,
+                                                   ifelse(nibrs_crime == "ROBBERY-INDIVIDUAL", 5,
+                                                          ifelse(nibrs_crime == "BURGLARY-RESIDENCE", 6,
+                                                                 ifelse(nibrs_crime == "BURGLARY-BUSINESS", 7,
                                                                         "ERROR"
                               )))))))) %>%
   select(-(dpd_2017:dpd_2020), -crime, -Diff3Year) %>%
@@ -346,26 +346,26 @@ plot.race %>%
 incident_nibrs_div <- dpdIncidents %>%
   mutate(division = str_to_title(division)) %>%
   st_drop_geometry(.) %>%
-  group_by(Year, Month, division, crime) %>%
+  group_by(Year, Month, division, nibrs_crime) %>%
   summarize(count = n())
 
 incident_vgc_div <- dpdIncidents %>%
   mutate(division = str_to_title(division)) %>%
   filter(vgc_flag == 1) %>%
-  mutate(crime = "VIOLENT GUN CRIME") %>%
+  mutate(nibrs_crime = "VIOLENT GUN CRIME") %>%
   st_drop_geometry(.) %>%
-  group_by(Year, Month, division, crime) %>%
+  group_by(Year, Month, division, nibrs_crime) %>%
   summarize(count = n())
 
 incident_table_div <- full_join(incident_nibrs_div, incident_vgc_div) %>%
   filter(Year > 2016) %>%
-  mutate(crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
-                              ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
-                                     ifelse(crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
-                                            ifelse(crime == "ROBBERY-BUSINESS", "Robbery (Business)",
-                                                   ifelse(crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
-                                                          ifelse(crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
-                                                                 ifelse(crime == "BURGLARY-BUSINESS", "Burglary (Business)",
+  mutate(crime_title = ifelse(nibrs_crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
+                              ifelse(nibrs_crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
+                                     ifelse(nibrs_crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
+                                            ifelse(nibrs_crime == "ROBBERY-BUSINESS", "Robbery (Business)",
+                                                   ifelse(nibrs_crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
+                                                          ifelse(nibrs_crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
+                                                                 ifelse(nibrs_crime == "BURGLARY-BUSINESS", "Burglary (Business)",
                                                                         "ERROR"
                                                                  ))))))))
 
@@ -384,14 +384,14 @@ report_table_div <- incident_table_div %>%
          Year2Year = paste0(round(((dpd_2022-dpd_2021)/dpd_2021)*100, digits = 1), "%"),
          Avg3Year = round((dpd_2020+dpd_2021+dpd_2022)/3, digits = 1),
          Diff3Year = paste0(round(((dpd_2022-Avg3Year)/Avg3Year)*100, digits = 1), "%"),
-         crime = factor(crime, levels = c("MURDER & NONNEGLIGENT MANSLAUGHTER", "VIOLENT GUN CRIME", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS")),
-         crime_title = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
-                              ifelse(crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
-                                     ifelse(crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
-                                            ifelse(crime == "ROBBERY-BUSINESS", "Robbery (Business)",
-                                                   ifelse(crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
-                                                          ifelse(crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
-                                                                 ifelse(crime == "BURGLARY-BUSINESS", "Burglary (Business)",
+         crime = factor(nibrs_crime, levels = c("MURDER & NONNEGLIGENT MANSLAUGHTER", "VIOLENT GUN CRIME", "AGG ASSAULT - NFV", "ROBBERY-BUSINESS", "ROBBERY-INDIVIDUAL", "BURGLARY-RESIDENCE", "BURGLARY-BUSINESS")),
+         crime_title = ifelse(nibrs_crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", "Murder & Nonnegligent Manslaughter",
+                              ifelse(nibrs_crime == "VIOLENT GUN CRIME", "Violent Gun Crime",
+                                     ifelse(nibrs_crime == "AGG ASSAULT - NFV", "Aggravated Assault (NFV)",
+                                            ifelse(nibrs_crime == "ROBBERY-BUSINESS", "Robbery (Business)",
+                                                   ifelse(nibrs_crime == "ROBBERY-INDIVIDUAL", "Robbery (Individual)",
+                                                          ifelse(nibrs_crime == "BURGLARY-RESIDENCE", "Burglary (Residence)",
+                                                                 ifelse(nibrs_crime == "BURGLARY-BUSINESS", "Burglary (Business)",
                                                                         "ERROR"
                                                                  ))))))),
          crime_order = ifelse(crime == "MURDER & NONNEGLIGENT MANSLAUGHTER", 1,
