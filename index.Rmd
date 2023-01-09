@@ -22,8 +22,8 @@ library(htmltools)
 library(reactable)
 library(CPALtools)
 
-#datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
-datalib <- "E:/CPAL Dropbox/" # Michael Desktop
+datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
+#datalib <- "E:/CPAL Dropbox/" # Michael Desktop
 
 #### Import Arrest Data 
 arrests <- import(paste0(datalib, "Data Library/City of Dallas/04_Public Safety/Dallas Police/Data/Arrests/Processed Data/Dallas Police Arrests - All Arrests.csv")) %>%
