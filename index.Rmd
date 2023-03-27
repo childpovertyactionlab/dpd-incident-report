@@ -294,7 +294,6 @@ month_tbl %>%
     y = "",
     color = 'VARIABLE'
   ) +
-
   theme_cpal()
 
 ```
