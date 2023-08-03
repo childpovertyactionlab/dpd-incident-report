@@ -20,7 +20,8 @@ library(rio)
 library(htmltools)
 #library(arcgisbinding)
 library(reactable)
-library(CPALtools)
+library(cpaltools)
+library(cpaltemplates)
 
 datalib <- "C:/Users/micha/CPAL Dropbox/" # Michael Laptop
 #datalib <- "E:/CPAL Dropbox/" # Michael Desktop
@@ -294,7 +295,7 @@ month_tbl %>%
     y = "",
     color = 'VARIABLE'
   ) +
-  theme_cpal()
+  theme_cpal_print()
 
 ```
 
@@ -324,15 +325,10 @@ pie_tbl <-vgc30days %>%
 pie_tbl %>%
   ggplot(aes(x = "", y = vgcPercent, fill = reorder(division, vgcPercent))) +
   geom_bar(stat = "identity", width = 1, color = "#ffffff", size = 1) +
-  scale_fill_manual(values = pal_cpalfac) +
+  scale_fill_manual(values = cpaltemplates::palette_cpal_main) +
   coord_polar("y", start = 0) +
-  theme_cpal() +
-  theme(legend.position = "none",
-        axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        axis.title = element_blank(),
-        panel.grid = element_blank(),
-        ) +
+  theme_cpal_map() +
+  theme(legend.position = "none") +
   geom_text(aes(x = 1.2, 
                 y = ypos, 
                 label = paste0(division, "\n",
@@ -407,7 +403,7 @@ week_tbl %>%
     color = 'VARIABLE'
   ) +
 
-  theme_cpal()
+  theme_cpal_print()
 ```
 
 There were **`r nrow(filter(vgc7days, tot_victims >= 4))`** incidents with 4 or more victims across the city last week.

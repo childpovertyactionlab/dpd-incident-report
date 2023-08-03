@@ -153,7 +153,7 @@ incident_table %>%
            alpha = 0.5) +
   geom_line(size=2, alpha = 0.9, color = "#ffffff", stat = "identity") +
   geom_line(size=1, alpha = 0.9, stat = "identity") +
-  scale_color_manual(values = pal_cpalfac) +
+  scale_color_manual(values = palette_cpal_main) +
   facet_wrap(~crime_title) +
   labs(
     title = "Select Group A Incidents Over Time",
@@ -162,9 +162,8 @@ incident_table %>%
     y = "",
     color = 'VARIABLE'
   ) +
-  theme_cpal(base_size = 28) +
-  theme(axis.text.x=element_text(angle=45, hjust=1),
-        legend.position = "none")
+  theme_cpal_print() +
+  theme(legend.position = "none")
 
 ```
 
@@ -224,14 +223,14 @@ dpdIncidents %>%
             vjust = 2, color = "#FFFFFF", fontface = "bold", size = 7) +
 
   facet_wrap(~crime_title) +
-  scale_fill_manual(values = pal_cpalfac) +
+  scale_fill_manual(values = palette_cpal_main) +
   labs(
     title = "Incidents by Time Period",
     x = "",
     y = "",
     color = 'VARIABLE'
   ) +
-  theme_cpal(base_size = 28) +
+  theme_cpal_print() +
   theme(axis.text.x=element_text(angle=45, hjust=1),
         legend.position = "none")
 
@@ -259,7 +258,7 @@ dpdIncidents %>%
     )
   ) +
   geom_bar(size=1, alpha = 1, stat = "identity") +
-  scale_fill_manual(values = pal_cpalfac) +
+  scale_fill_manual(values = palette_cpal_main) +
   geom_text(aes(label = scales::percent(perc, accuracy = 0.1)),
             vjust = 2, color = "#FFFFFF", fontface = "bold", size = 7) +
   #  scale_size_manual(values = 3) +
@@ -271,7 +270,7 @@ dpdIncidents %>%
     y = "",
     color = 'VARIABLE'
   ) +
-  theme_cpal(base_size = 28) +
+  theme_cpal_print() +
   theme(axis.text.x=element_text(angle=30, hjust=0.7, vjust = 0.7),
         legend.position = "none")
 
@@ -327,8 +326,8 @@ plot.race %>%
   ) +
   geom_bar(size=1, alpha = 1, stat = 'identity', position = 'dodge') +
   scale_y_continuous(labels = scales::percent, limits = c(0,0.6)) +
-  scale_fill_manual(values = pal_cpaltri) +
-  theme_cpal(base_size = 28) +
+  scale_fill_manual(values = palette_cpal_main) +
+  theme_cpal_print() +
   theme(legend.position = "bottom",
         legend.title=element_blank()) +
   labs(
